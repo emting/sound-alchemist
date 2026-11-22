@@ -1,0 +1,3827 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>《聲波鍊金術士》Audio-Synced Combat v3.0｜音訊同步 Roguelike 塔防網頁遊戲</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,600;0,700;1,400&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #070a12;
+      --bg-panel: rgba(15, 22, 38, 0.88);
+      --accent-main: #f59e0b;
+      --accent-sec: #38bdf8;
+      --border-tint: rgba(245, 158, 11, 0.38);
+      --card-glow: rgba(245, 158, 11, 0.22);
+    }
+    body.mode-stylized {
+      --bg-primary: #06020e;
+      --bg-panel: rgba(22, 9, 44, 0.90);
+      --accent-main: #f43f5e;
+      --accent-sec: #00f5d4;
+      --border-tint: rgba(244, 63, 94, 0.48);
+      --card-glow: rgba(0, 245, 212, 0.25);
+    }
+    body {
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+      background-color: var(--bg-primary);
+      background-image:
+        radial-gradient(circle at 12% 18%, rgba(245, 158, 11, 0.09) 0%, transparent 40%),
+        radial-gradient(circle at 88% 82%, rgba(56, 189, 248, 0.09) 0%, transparent 45%),
+        linear-gradient(180deg, #070a12 0%, #0d1324 100%);
+      color: #f8fafc;
+      overflow-x: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    body.mode-stylized {
+      background-image:
+        radial-gradient(circle at 15% 20%, rgba(236, 72, 153, 0.14) 0%, transparent 42%),
+        radial-gradient(circle at 85% 80%, rgba(0, 245, 212, 0.12) 0%, transparent 45%),
+        linear-gradient(180deg, #06020e 0%, #140828 100%);
+    }
+    .font-mono-code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .font-display-serif {
+      font-family: 'Cinzel', 'Noto Sans TC', serif;
+    }
+    /* CRT scanline overlay for Stylized Mode */
+    .crt-overlay {
+      pointer-events: none;
+      background: linear-gradient(
+        rgba(18, 16, 16, 0) 50%,
+        rgba(0, 0, 0, 0.30) 50%
+      ), linear-gradient(
+        90deg,
+        rgba(255, 0, 128, 0.03),
+        rgba(0, 255, 212, 0.015),
+        rgba(0, 128, 255, 0.03)
+      );
+      background-size: 100% 4px, 6px 100%;
+      opacity: 0;
+      transition: opacity 0.35s ease;
+    }
+    body.mode-stylized .crt-overlay {
+      opacity: 1;
+    }
+    /* Studio-grade Glassmorphic Panels */
+    .glass-panel {
+      background: linear-gradient(145deg, rgba(19, 27, 46, 0.92) 0%, rgba(11, 15, 27, 0.95) 100%);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.7), inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+    }
+    body.mode-stylized .glass-panel {
+      background: linear-gradient(145deg, rgba(28, 12, 54, 0.92) 0%, rgba(13, 5, 28, 0.96) 100%);
+      box-shadow: 0 12px 36px -8px rgba(236, 72, 153, 0.22), inset 0 1px 0 0 rgba(0, 245, 212, 0.18);
+    }
+    /* Collectible TCG Card Styling */
+    .tcg-card {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(165deg, rgba(24, 34, 58, 0.96) 0%, rgba(11, 16, 30, 0.99) 100%);
+      box-shadow: 0 10px 24px -6px rgba(0, 0, 0, 0.75), inset 0 1px 0 0 rgba(255, 255, 255, 0.14);
+      transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.22s ease, border-color 0.22s ease;
+    }
+    .tcg-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(125deg, transparent 20%, rgba(255, 255, 255, 0.05) 45%, transparent 70%);
+      transform: translateX(-100%);
+      transition: transform 0.55s ease;
+      pointer-events: none;
+    }
+    .tcg-card:hover:not(.card-disabled) {
+      transform: translateY(-9px) scale(1.025);
+      box-shadow: 0 18px 34px -6px rgba(0, 0, 0, 0.85), 0 0 22px -2px var(--card-glow), inset 0 1px 0 0 rgba(255, 255, 255, 0.28);
+    }
+    .tcg-card:hover:not(.card-disabled)::before {
+      transform: translateX(100%);
+    }
+    .tcg-card:active:not(.card-disabled) {
+      transform: translateY(-3px) scale(0.995);
+    }
+    .tcg-card-upgraded {
+      background: linear-gradient(165deg, rgba(44, 34, 16, 0.96) 0%, rgba(16, 18, 32, 0.99) 100%);
+      box-shadow: 0 10px 26px -6px rgba(245, 158, 11, 0.28), inset 0 0 18px rgba(251, 191, 36, 0.12);
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.4);
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between relative selection:bg-amber-500 selection:text-slate-950">
+  <!-- CRT Scanline Layer -->
+  <div class="crt-overlay fixed inset-0 z-40"></div>
+
+  <!-- Top Navigation & Audio Synthesizer Console Header -->
+  <header class="w-full border-b border-slate-800/90 bg-slate-950/90 backdrop-blur-xl z-30 px-3 py-2.5 shadow-xl">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+      <!-- Brand Crest & Act Status -->
+      <div class="flex items-center gap-3">
+        <div id="brandBadge" class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400/30 via-amber-500/15 to-sky-500/20 border border-amber-400/60 flex items-center justify-center text-amber-300 font-black text-xl shadow-[0_0_18px_rgba(245,158,11,0.3)]">
+          ∿
+        </div>
+        <div>
+          <div class="flex flex-wrap items-center gap-2">
+            <h1 class="text-sm sm:text-base font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-white to-sky-200">
+              《聲波鍊金術士》v3.0
+            </h1>
+            <span id="actBadge" class="text-[11px] font-mono-code font-bold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/50 shadow-sm">
+              ACT I · 幽暗地牢
+            </span>
+            <span id="bestRecordBadge" class="hidden md:inline-block text-[11px] font-mono-code px-2.5 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-500/40">
+              最高紀錄：第 1 波
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-400 hidden sm:block mt-0.5">
+            Audio-Synced Roguelike Tower Defense · 基於 <a href="https://www.casper.tw/sound-effects/zh-tw/" target="_blank" rel="noopener noreferrer" class="text-sky-400 hover:text-sky-300 underline decoration-sky-500/50">卡斯伯免費音效庫 (103,640 MP3s)</a> 設計
+          </p>
+        </div>
+      </div>
+
+      <!-- Dual-Timbre Switch & Master Console Buttons -->
+      <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+        <button id="btnTimbreSwitch" type="button" class="px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 bg-gradient-to-r from-amber-500/20 to-orange-500/15 border-amber-400/60 text-amber-200 hover:brightness-125 shadow-[0_0_14px_rgba(245,158,11,0.2)]" title="切換寫實共鳴 (Natural) 與風格化共鳴 (Stylized)">
+          <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse shadow-[0_0_8px_#fbbf24]" id="timbreDot"></span>
+          <span id="timbreLabel">調音台：寫實共鳴 (Natural ±65ms)</span>
+        </button>
+
+        <button id="btnBlindModeToggle" type="button" class="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700/90 transition" title="隱藏敵人頭頂 Q/W/E 提示，純靠立體聲道與音色材質盲聽彈反（成功彈反傷害與賞金翻倍）">
+          盲聽挑戰：關
+        </button>
+
+        <button id="btnOpenShop" type="button" class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-yellow-500/25 to-amber-500/15 hover:brightness-125 text-yellow-300 border border-yellow-400/50 transition shadow-sm">
+          黑市商店 (鍛造/刪牌)
+        </button>
+
+        <button id="btnOpenSim" type="button" class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-fuchsia-500/25 to-purple-500/20 hover:brightness-125 text-fuchsia-300 border border-fuchsia-400/50 transition">
+          10輪平衡壓測
+        </button>
+
+        <button id="btnAmbientToggle" type="button" class="px-2.5 py-1.5 rounded-xl text-xs font-medium bg-slate-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700/90 transition">
+          環境底噪：開
+        </button>
+
+        <button id="btnMuteToggle" type="button" class="px-2.5 py-1.5 rounded-xl text-xs font-medium bg-slate-900/90 hover:bg-slate-800 text-slate-300 border border-slate-700/90 transition">
+          音效：開啟
+        </button>
+
+        <button id="btnOpenCodex" type="button" class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-400/50 transition">
+          圖鑑與試聽室 (30卡/10遺物)
+        </button>
+
+        <button id="btnOpenGuide" type="button" class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-400/50 transition">
+          音效庫數據與玩法
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-2 sm:px-4 py-2 flex flex-col gap-2.5">
+    <!-- Top HUD Strip: Ornate Instrument Cluster -->
+    <section class="grid grid-cols-2 sm:grid-cols-12 gap-2.5 items-center glass-panel border border-slate-800/90 rounded-2xl p-3">
+      <!-- Tower Durability & Hex Shield Readout -->
+      <div class="col-span-2 sm:col-span-3 flex items-center gap-3 pr-1">
+        <div class="flex-1">
+          <div class="flex justify-between items-center text-xs mb-1.5">
+            <span class="text-slate-200 font-bold flex items-center gap-1.5">
+              <span class="inline-block w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e]"></span>
+              鍊金塔耐久度
+            </span>
+            <span class="font-mono-code font-black text-rose-300 text-sm"><span id="hudHp">80</span> / <span id="hudMaxHp">80</span></span>
+          </div>
+          <div class="w-full h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-700/80 p-0.5 shadow-inner">
+            <div id="hpBarFill" class="h-full rounded-full bg-gradient-to-r from-rose-600 via-orange-500 to-amber-400 transition-all duration-300 shadow-[0_0_10px_rgba(244,63,94,0.6)]" style="width: 100%;"></div>
+          </div>
+        </div>
+        <div class="px-3 py-1.5 rounded-xl bg-gradient-to-b from-sky-500/25 to-sky-900/20 border border-sky-400/50 text-center min-w-[70px] shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]">
+          <div class="text-[10px] text-sky-300 font-semibold tracking-wider">共鳴護盾</div>
+          <div id="hudArmor" class="text-base font-mono-code font-black text-sky-200">0</div>
+        </div>
+      </div>
+
+      <!-- Acoustic Mana Orbs, Resonance Charge Bar, Combo & Gold -->
+      <div class="col-span-2 sm:col-span-5 grid grid-cols-5 gap-1.5 items-center border-t sm:border-t-0 sm:border-l sm:border-r border-slate-800/90 pt-2 sm:pt-0 px-2">
+        <div class="text-center bg-slate-950/60 rounded-xl py-1.5 px-1 border border-slate-800/80">
+          <div class="text-[10px] text-slate-400">聲波魔力</div>
+          <div class="text-base font-mono-code font-black text-amber-400">
+            <span id="hudMana">3</span><span class="text-xs text-slate-500">/</span><span id="hudMaxMana" class="text-xs text-slate-400">3</span>
+          </div>
+          <div id="hudManaDots" class="flex justify-center gap-1 mt-0.5"></div>
+        </div>
+
+        <div class="text-center bg-slate-950/60 rounded-xl py-1.5 px-1 border border-slate-800/80" title="每次 Peak 累積 1 格充能（風格化 +1.5 格），集滿 2 格自動回復 +1 魔力">
+          <div class="text-[10px] text-slate-400">Peak 充能</div>
+          <div id="hudChargeCells" class="text-xs font-mono-code font-black text-cyan-300 mt-0.5">0.0 / 2.0 ⚡</div>
+          <div class="w-4/5 mx-auto h-1.5 bg-slate-800 rounded-full overflow-hidden mt-1">
+            <div id="hudChargeBarFill" class="h-full bg-cyan-400 transition-all duration-200" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <div class="text-center bg-slate-950/60 rounded-xl py-1.5 px-1 border border-slate-800/80" title="過關時連擊折半保留 50%，跨幕重置">
+          <div class="text-[10px] text-slate-400">共鳴連擊</div>
+          <div id="hudCombo" class="text-base font-mono-code font-black text-emerald-400">0x</div>
+        </div>
+
+        <div class="text-center bg-slate-950/60 rounded-xl py-1.5 px-1 border border-slate-800/80" title="R07 溢滿存錢筒最多提供 +20 基礎傷害上限（300G 封頂）">
+          <div class="text-[10px] text-slate-400">鍊金金幣</div>
+          <div id="hudGold" class="text-base font-mono-code font-black text-yellow-300">80</div>
+        </div>
+
+        <div class="text-center bg-slate-950/60 rounded-xl py-1.5 px-1 border border-slate-800/80">
+          <div class="text-[10px] text-slate-400">波次進度</div>
+          <div id="hudWave" class="text-sm font-mono-code font-black text-purple-300">1 / 6</div>
+        </div>
+      </div>
+
+      <!-- Owned Acoustic Relics Medallions & Campfire Button -->
+      <div class="col-span-2 sm:col-span-4 flex items-center justify-between gap-2 pl-1">
+        <div class="flex-1 overflow-x-auto">
+          <div class="text-[10px] text-slate-400 mb-1 flex items-center justify-between">
+            <span class="font-semibold text-slate-300">聲學遺物徽章（點擊試聽）：</span>
+            <div class="flex items-center gap-1">
+              <span id="discountBuffTag" class="hidden text-[10px] font-mono-code px-1.5 py-0.2 bg-emerald-500/20 text-emerald-300 rounded border border-emerald-400/40">下張減 1 費</span>
+              <span id="nextCardBuffTag" class="hidden text-[10px] font-mono-code px-1.5 py-0.2 bg-amber-500/20 text-amber-300 rounded border border-amber-400/40">下張傷害 +50%</span>
+              <span id="bulletTimeTag" class="hidden text-[10px] font-mono-code px-1.5 py-0.2 bg-cyan-500/20 text-cyan-300 rounded border border-cyan-400/40">子彈時間 0.5x</span>
+            </div>
+          </div>
+          <div id="relicBar" class="flex items-center gap-1.5 min-h-[30px]"></div>
+        </div>
+        <button id="btnCampfireRest" type="button" class="px-3 py-2 rounded-xl text-xs font-black bg-gradient-to-b from-amber-500/30 to-orange-600/20 hover:brightness-125 text-amber-200 border border-amber-400/50 whitespace-nowrap transition shadow-md" title="消耗 25 金幣點燃存檔點營火回復耐久">
+          營火修復 (25G)
+        </button>
+      </div>
+    </section>
+
+    <!-- Center Stage: Studio-Grade Parallax Battlefield Canvas + Oscilloscope -->
+    <section class="relative w-full bg-slate-950 border-2 border-slate-800/90 rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.85)]" style="height: 380px;">
+      <canvas id="battleCanvas" class="w-full h-full block cursor-pointer"></canvas>
+
+      <!-- Top-Left Stereo Lane Selector Console -->
+      <div class="absolute top-3 left-3 flex items-center gap-1.5 bg-slate-950/85 backdrop-blur-xl border border-slate-700/80 rounded-xl p-1.5 z-10 shadow-xl">
+        <span class="text-[11px] text-slate-300 px-1.5 font-bold">立體聲軌：</span>
+        <button id="btnLane0" type="button" class="lane-btn px-2.5 py-1 rounded-lg text-xs font-mono-code font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+          [1] 左聲道 L (-0.8)
+        </button>
+        <button id="btnLane1" type="button" class="lane-btn px-2.5 py-1 rounded-lg text-xs font-mono-code font-bold bg-amber-500 text-slate-950 shadow transition">
+          [2] 中聲道 C (0.0)
+        </button>
+        <button id="btnLane2" type="button" class="lane-btn px-2.5 py-1 rounded-lg text-xs font-mono-code font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+          [3] 右聲道 R (+0.8)
+        </button>
+      </div>
+
+      <!-- Top-Center Boss Alert Banner -->
+      <div id="bossAlertBanner" class="hidden absolute top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-rose-950/95 via-purple-950/95 to-rose-950/95 border border-rose-400/70 px-4 py-1.5 rounded-full text-xs font-black text-rose-200 shadow-[0_0_25px_rgba(244,63,94,0.45)] z-10 items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-rose-400 animate-ping"></span>
+        <span id="bossAlertText">ACT BOSS 登場：聲學干擾生效中</span>
+      </div>
+
+      <!-- Top-Right Live Sound Effect Oscilloscope & Telemetry Readout -->
+      <div class="absolute top-3 right-3 bg-slate-950/88 backdrop-blur-xl border border-slate-700/80 rounded-xl px-3.5 py-2 text-right z-10 max-w-xs shadow-xl">
+        <div class="text-[10px] font-mono-code text-slate-400 flex items-center justify-end gap-2">
+          <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+          <span>即時音訊包絡遙測</span>
+          <span id="telemetryFormat" class="text-emerald-400 font-bold">320 kbps · -1 dBFS</span>
+        </div>
+        <div id="telemetrySoundName" class="text-xs font-extrabold text-amber-300 truncate mt-0.5">待機中（點擊卡牌開始詠唱）</div>
+        <div id="telemetryCategory" class="text-[10px] text-sky-400 truncate">分類：太空船 / 幽暗地牢環境音</div>
+      </div>
+
+      <!-- Bottom-Left Stereo Telegraph Parry Shields -->
+      <div class="absolute bottom-3 left-3 flex flex-wrap items-center gap-1.5 bg-slate-950/90 backdrop-blur-xl border border-slate-700/80 rounded-xl p-1.5 z-10 shadow-xl">
+        <span class="text-[11px] text-slate-200 font-bold px-1.5">聽音調諧舉盾：</span>
+        <button id="btnParryMetal" type="button" class="px-3 py-1.5 rounded-lg text-xs font-black bg-gradient-to-b from-amber-500/25 to-slate-900 hover:brightness-125 text-amber-300 border border-amber-400/60 transition flex items-center gap-1 shadow-sm">
+          <span>[Q] 金屬格擋</span>
+        </button>
+        <button id="btnParryCrystal" type="button" class="px-3 py-1.5 rounded-lg text-xs font-black bg-gradient-to-b from-cyan-500/25 to-slate-900 hover:brightness-125 text-cyan-300 border border-cyan-400/60 transition flex items-center gap-1 shadow-sm">
+          <span>[W] 水晶格擋</span>
+        </button>
+        <button id="btnParryEnergy" type="button" class="px-3 py-1.5 rounded-lg text-xs font-black bg-gradient-to-b from-fuchsia-500/25 to-slate-900 hover:brightness-125 text-fuchsia-300 border border-fuchsia-400/60 transition flex items-center gap-1 shadow-sm">
+          <span>[E] 能量格擋</span>
+        </button>
+      </div>
+
+      <!-- Bottom-Right Peak Release Action Button & Next Turn -->
+      <div class="absolute bottom-3 right-3 flex items-center gap-2 z-10">
+        <button id="btnReleaseCast" type="button" disabled class="px-4 py-2 rounded-xl text-xs sm:text-sm font-black tracking-wide bg-slate-900/90 text-slate-500 border border-slate-700/80 shadow-xl transition-all">
+          [空白鍵 / 點擊畫面] 峰值釋放 (PEAK RELEASE)
+        </button>
+        <button id="btnEndTurn" type="button" class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-black bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white border border-indigo-400/60 shadow-xl transition">
+          重抽換牌 / 下一波 [R]
+        </button>
+      </div>
+    </section>
+
+    <!-- Bottom Hand Deck & Faction Filter Strip (Collectible TCG Layout) -->
+    <section class="glass-panel border border-slate-800/90 rounded-2xl p-3.5 flex flex-col gap-2.5">
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/90 pb-2.5">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="text-xs font-extrabold text-amber-200 tracking-wide">✦ 聲波法典手牌區（支援點擊兩段式或按住放開共鳴）：</span>
+          <span id="castHintBadge" class="text-[11px] font-mono-code px-2.5 py-0.5 rounded-full bg-slate-900 text-slate-300 border border-slate-700">
+            等待出牌...
+          </span>
+          <div class="flex items-center gap-1.5 text-[11px] font-mono-code ml-1">
+            <span class="px-2.5 py-0.5 rounded-lg bg-slate-950/90 text-sky-300 border border-sky-500/30">抽牌堆：<strong id="hudDrawCount">10</strong></span>
+            <span class="px-2.5 py-0.5 rounded-lg bg-slate-950/90 text-slate-400 border border-slate-700">棄牌堆：<strong id="hudDiscardCount">0</strong></span>
+            <span class="px-2.5 py-0.5 rounded-lg bg-slate-950/90 text-amber-300 border border-amber-500/30">總牌庫：<strong id="hudMasterCount">12</strong></span>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 text-xs">
+          <span class="text-slate-400 font-medium">流派套牌：</span>
+          <select id="selectPresetDeck" class="bg-slate-950 border border-slate-700 text-slate-200 rounded-xl px-2.5 py-1 text-xs font-semibold focus:outline-none focus:border-amber-400">
+            <option value="balanced">全流派精選混成套牌 (預設 12 張)</option>
+            <option value="arcane">流派一：奧術元素流 (Flash/Sweep/Vortex)</option>
+            <option value="starship">流派二：重工星艦流 (高費長蓄力貫穿)</option>
+            <option value="music">流派三：古樂共鳴流 (極速連擊疊盾)</option>
+            <option value="chaos">流派四：混沌諧星流 (放屁毒霧與長號控場)</option>
+          </select>
+          <button id="btnDrawFullHand" type="button" class="px-3 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/40 font-bold transition">
+            補滿手牌與魔力 (沙盒)
+          </button>
+        </div>
+      </div>
+
+      <!-- Cards Hand Grid -->
+      <div id="handContainer" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 pt-1 min-h-[212px]"></div>
+    </section>
+  </main>
+
+  <!-- Toast Notification Banner -->
+  <div id="toastBanner" class="fixed bottom-5 right-5 z-50 pointer-events-none opacity-0 translate-y-2 transition-all duration-200 bg-slate-950/95 border border-amber-400/70 text-amber-200 px-4 py-3 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.85)] text-xs font-bold max-w-sm"></div>
+
+  <!-- Wave Clear / Reward 3-Choice Modal -->
+  <div id="rewardModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/85 backdrop-blur-md p-4">
+    <div class="glass-panel border border-amber-500/60 rounded-2xl max-w-3xl w-full p-5 shadow-2xl">
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3 mb-4">
+        <div>
+          <span class="text-xs font-mono-code uppercase tracking-wider text-amber-400">WAVE CLEARED · 過關號角響起（連擊折半保留 50%）</span>
+          <h2 id="rewardModalTitle" class="text-lg font-black text-white mt-0.5">戰利品共鳴三選一（轉蛋與遺物獎勵）</h2>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="btnOpenShopFromReward" type="button" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-300 border border-yellow-500/40">
+            前往黑市商店 (鍛造/刪牌)
+          </button>
+          <button id="btnSkipReward" type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">
+            跳過並領取 +35 金幣
+          </button>
+        </div>
+      </div>
+      <p class="text-xs text-slate-300 mb-4">
+        系統已觸發 <a href="https://www.casper.tw/sound-effects/level-complete/" target="_blank" rel="noopener noreferrer" class="text-sky-400 underline">過關音效（137 個）</a> 與 <a href="https://www.casper.tw/sound-effects/zh-tw/game/" target="_blank" rel="noopener noreferrer" class="text-sky-400 underline">轉蛋旋鈕與掉落聲</a>，請選擇一張新卡牌永久納入牌庫或領取聲學遺物：
+      </p>
+      <div id="rewardChoicesContainer" class="grid grid-cols-1 sm:grid-cols-3 gap-3"></div>
+    </div>
+  </div>
+
+  <!-- Acoustic Black Market Shop Modal -->
+  <div id="shopModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/85 backdrop-blur-md p-3 sm:p-6">
+    <div class="glass-panel border border-yellow-500/50 rounded-2xl max-w-5xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="px-5 py-3.5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 bg-slate-950/60">
+        <div>
+          <span class="text-xs font-mono-code text-yellow-400">ACOUSTIC BLACK MARKET · 聲波鍊金黑市</span>
+          <h2 class="text-base sm:text-lg font-black text-white">卡牌鍛造升級 (+35% 威力 &amp; -12% 蓄力)、牌庫淨化刪牌與核心擴容</h2>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class="text-xs font-mono-code px-3 py-1 rounded-lg bg-yellow-500/15 text-yellow-300 border border-yellow-500/40 font-bold">
+            持有金幣：<span id="shopGoldReadout">80</span> G
+          </span>
+          <button id="btnCloseShop" type="button" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">
+            返回戰場
+          </button>
+        </div>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-5 flex-1">
+        <!-- Relic & Permanent Core Upgrades Row -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div class="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 flex flex-col justify-between gap-2.5">
+            <div>
+              <h3 class="text-sm font-extrabold text-purple-300">隨機未持有聲學遺物盲盒</h3>
+              <p class="text-xs text-slate-400 mt-0.5">立即抽出一件未持有的稀有／傳說聲學遺物</p>
+            </div>
+            <button id="btnBuyRelicShop" type="button" class="w-full py-2 rounded-xl text-xs font-black bg-purple-600 hover:bg-purple-500 text-white shadow transition">
+              購買遺物盲盒 (120 G)
+            </button>
+          </div>
+          <div class="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 flex flex-col justify-between gap-2.5">
+            <div>
+              <h3 class="text-sm font-extrabold text-amber-300">聲波核心擴容（魔力上限 +1）</h3>
+              <p class="text-xs text-slate-400 mt-0.5">永久提升每回合最大魔力上限（最高 5 點）並立即補滿</p>
+            </div>
+            <button id="btnBuyMaxManaShop" type="button" class="w-full py-2 rounded-xl text-xs font-black bg-amber-500 hover:bg-amber-400 text-slate-950 shadow transition">
+              擴容魔力上限 +1 (150 G)
+            </button>
+          </div>
+          <div class="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 flex flex-col justify-between gap-2.5">
+            <div>
+              <h3 class="text-sm font-extrabold text-emerald-300">鍊金塔裝甲加固（耐久上限 +15）</h3>
+              <p class="text-xs text-slate-400 mt-0.5">永久提升最大耐久度 +15，並立即回復 15 HP 與 +10 護盾</p>
+            </div>
+            <button id="btnBuyMaxHpShop" type="button" class="w-full py-2 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-500 text-white shadow transition">
+              加固塔防耐久 +15 (90 G)
+            </button>
+          </div>
+        </div>
+
+        <!-- Master Deck Upgrade & Purge List -->
+        <div>
+          <h3 class="text-sm font-bold text-white mb-2">目前總牌庫清單（點擊「鍛造升級 + (80G)」強化卡牌，或「移除冗牌 (60G)」精簡抽牌循環）：</h3>
+          <div id="shopDeckGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10-Run AI Balance Simulator Modal -->
+  <div id="simModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/85 backdrop-blur-md p-3 sm:p-6">
+    <div class="glass-panel border border-fuchsia-500/50 rounded-2xl max-w-5xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="px-5 py-3.5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 bg-slate-950/60">
+        <div>
+          <span class="text-xs font-mono-code text-fuchsia-400">AUTOMATED 10-RUN TELEMETRY · 平衡性壓測引擎</span>
+          <h2 class="text-base sm:text-lg font-black text-white">v3.0 終極平衡版 10 輪即時對戰模擬器（含三幕 Boss、充能回魔、重抽推進與黑市擴容）</h2>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="btnRerunSim" type="button" class="px-3.5 py-1.5 rounded-xl text-xs font-black bg-fuchsia-600 hover:bg-fuchsia-500 text-white shadow">
+            重新執行 10 輪模擬
+          </button>
+          <button id="btnCloseSim" type="button" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">
+            關閉面板
+          </button>
+        </div>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-4 flex-1 text-xs">
+        <div id="simSummaryKPIs" class="grid grid-cols-2 sm:grid-cols-4 gap-3"></div>
+        <div class="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/80">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-slate-800 text-slate-400 bg-slate-900/60">
+                <th class="py-2.5 px-3">輪次與流派配置</th>
+                <th class="py-2.5 px-3">推進波數 (結果)</th>
+                <th class="py-2.5 px-3">最高連擊</th>
+                <th class="py-2.5 px-3">黑市強化投資</th>
+                <th class="py-2.5 px-3">缺魔換牌</th>
+                <th class="py-2.5 px-3">剩餘金幣</th>
+              </tr>
+            </thead>
+            <tbody id="simTableBody" class="divide-y divide-slate-800/70 font-mono-code"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Over / Victory Settlement Modal -->
+  <div id="gameOverModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/90 backdrop-blur-md p-4">
+    <div class="glass-panel border border-rose-500/60 rounded-2xl max-w-lg w-full p-6 shadow-2xl text-center">
+      <div id="goIconBadge" class="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-400 flex items-center justify-center mx-auto font-black text-xl mb-3">
+        ✕
+      </div>
+      <span id="goSubHeader" class="text-xs font-mono-code uppercase tracking-widest text-rose-400">GAME OVER · 悲傷長號與失敗下行音階</span>
+      <h2 id="goMainTitle" class="text-xl font-black text-white mt-1">聲波鍊金塔防線崩潰</h2>
+      <p class="text-xs text-slate-400 mt-1">
+        對應音效：<a href="https://www.casper.tw/sound-effects/zh-tw/game/" target="_blank" rel="noopener noreferrer" class="text-sky-400 underline">遊戲結束（81 個） / 過關音效（137 個）</a>
+      </p>
+
+      <div class="grid grid-cols-2 gap-2.5 my-5 text-left">
+        <div class="p-3 rounded-xl bg-slate-950/80 border border-slate-800">
+          <div class="text-[11px] text-slate-400">推進章節與波數</div>
+          <div id="goWaveStat" class="text-base font-mono-code font-bold text-white mt-0.5">ACT 1 - 波次 1</div>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-950/80 border border-slate-800">
+          <div class="text-[11px] text-slate-400">最高共鳴連擊</div>
+          <div id="goComboStat" class="text-base font-mono-code font-bold text-emerald-400 mt-0.5">0x</div>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-950/80 border border-slate-800">
+          <div class="text-[11px] text-slate-400">Peak 共鳴命中率</div>
+          <div id="goPeakRateStat" class="text-base font-mono-code font-bold text-amber-300 mt-0.5">0% (0/0)</div>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-950/80 border border-slate-800">
+          <div class="text-[11px] text-slate-400">擊退魔物總數</div>
+          <div id="goKillsStat" class="text-base font-mono-code font-bold text-sky-300 mt-0.5">0 隻</div>
+        </div>
+      </div>
+
+      <button id="btnRestartGame" type="button" class="w-full py-2.5 rounded-xl text-sm font-black bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-lg transition">
+        重新調諧並展開新局
+      </button>
+    </div>
+  </div>
+
+  <!-- Full 30 Cards & 10 Relics Codex & Soundboard Modal -->
+  <div id="codexModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/85 backdrop-blur-md p-3 sm:p-6">
+    <div class="glass-panel border border-slate-700 rounded-2xl max-w-6xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="px-5 py-3.5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 bg-slate-950/60">
+        <div>
+          <h2 class="text-base sm:text-lg font-black text-white">《聲波鍊金術士》首發 30 張卡牌與 10 個聲學遺物完整圖鑑＆試聽室</h2>
+          <p class="text-xs text-slate-400">
+            點擊任意卡片的「試聽音效包絡」可即時體驗目前調音台模式（寫實／風格化）下的合成波形，或點擊「加入手牌」直接實戰測試。
+          </p>
+        </div>
+        <button id="btnCloseCodex" type="button" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40">
+          關閉圖鑑 [ESC]
+        </button>
+      </div>
+
+      <!-- Filter Tabs inside Codex -->
+      <div class="px-5 py-2.5 bg-slate-900 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2">
+        <div class="flex flex-wrap items-center gap-1.5" id="codexFilterBar">
+          <button type="button" data-filter="all" class="codex-tab px-3 py-1 rounded-lg text-xs font-bold bg-amber-500 text-slate-950">全部 30 張卡牌</button>
+          <button type="button" data-filter="基礎通用" class="codex-tab px-3 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700">基礎通用 (4)</button>
+          <button type="button" data-filter="奧術元素流" class="codex-tab px-3 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700">奧術元素流 (7)</button>
+          <button type="button" data-filter="重工星艦流" class="codex-tab px-3 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700">重工星艦流 (7)</button>
+          <button type="button" data-filter="古樂共鳴流" class="codex-tab px-3 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700">古樂共鳴流 (6)</button>
+          <button type="button" data-filter="混沌諧星流" class="codex-tab px-3 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700">混沌諧星流・放屁毒霧 (6)</button>
+          <button type="button" data-filter="relics" class="codex-tab px-3 py-1 rounded-lg text-xs font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/40 hover:bg-purple-500/30">聲學遺物 (10)</button>
+        </div>
+        <div class="text-xs font-mono-code text-slate-400">
+          目前試聽調音模式：<span id="codexCurrentTimbre" class="text-amber-300 font-bold">寫實共鳴 (Natural)</span>
+        </div>
+      </div>
+
+      <!-- Codex Content Scroll Area -->
+      <div id="codexGridContainer" class="p-5 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 flex-1"></div>
+    </div>
+  </div>
+
+  <!-- Casper Sound Library Stats & Architecture Guide Modal -->
+  <div id="guideModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/85 backdrop-blur-md p-3 sm:p-6">
+    <div class="glass-panel border border-slate-700 rounded-2xl max-w-4xl w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="px-5 py-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
+        <div>
+          <h2 class="text-base sm:text-lg font-black text-white">卡斯伯免費音效庫（103,640 MP3s）研究數據與 v3.0 指南</h2>
+          <p class="text-xs text-slate-400">如何將 Stable Audio 3 Small SFX 的九道品管與包絡曲線轉化為遊戲機制</p>
+        </div>
+        <button id="btnCloseGuide" type="button" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700">
+          返回戰場
+        </button>
+      </div>
+      <div class="p-5 overflow-y-auto space-y-4 text-xs sm:text-sm text-slate-300 leading-relaxed">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800">
+            <div class="text-amber-400 font-mono-code text-xs">TOTAL SOUND EFFECTS</div>
+            <div class="text-2xl font-black text-white mt-0.5">103,640 個</div>
+            <p class="text-xs text-slate-400 mt-1">
+              全站採 320 kbps 立體聲 MP3、峰值統一為 −1 dBFS，切除前後無聲，最適合零延遲音訊觸發（<a href="https://www.casper.tw/sound-effects/zh-tw/about/" target="_blank" rel="noopener noreferrer" class="text-sky-400 underline">製作說明</a>）。
+            </p>
+          </div>
+          <div class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800">
+            <div class="text-sky-400 font-mono-code text-xs">GAME SFX CATEGORY</div>
+            <div class="text-2xl font-black text-white mt-0.5">11,008 個</div>
+            <p class="text-xs text-slate-400 mt-1">
+              含蓄力充能 (1,713)、太空船 (1,659)、漸強音效 (1,644)、魔法 (1,128) 與怪物 (1,085)（<a href="https://www.casper.tw/sound-effects/zh-tw/game/" target="_blank" rel="noopener noreferrer" class="text-sky-400 underline">遊戲音效頁</a>）。
+            </p>
+          </div>
+          <div class="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800">
+            <div class="text-pink-400 font-mono-code text-xs">REACTIONS &amp; FART SFX</div>
+            <div class="text-2xl font-black text-white mt-0.5">5,729 個</div>
+            <p class="text-xs text-slate-400 mt-1">
+              搞笑與綜藝含放屁聲 (117 個，0.25s–3.47s)、驚呼聲 (335)、群眾嘆氣 (241) 與悲傷長號 (72)（<a href="https://www.casper.tw/sound-effects/zh-tw/fart/" target="_blank" rel="noopener noreferrer" class="text-sky-400 underline">放屁聲音效頁</a>）。
+            </p>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-xl bg-slate-950/80 border border-slate-800">
+          <h3 class="font-bold text-white text-sm mb-2">10 大音效分類官方連結索引：</h3>
+          <div class="flex flex-wrap gap-2 text-xs">
+            <a href="https://www.casper.tw/sound-effects/zh-tw/" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-sky-300">首頁總覽 (103,640)</a>
+            <a href="https://www.casper.tw/sound-effects/zh-tw/game/" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-sky-300">遊戲音效 (11,008)</a>
+            <a href="https://www.casper.tw/sound-effects/zh-tw/reactions/" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-sky-300">搞笑與綜藝 (5,729)</a>
+            <a href="https://www.casper.tw/sound-effects/zh-tw/fart/" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-sky-300">放屁聲專頁 (117)</a>
+            <a href="https://www.casper.tw/sound-effects/level-complete/" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-sky-300">過關音效 (137)</a>
+            <a href="https://www.casper.tw/sound-effects/station-ambience/" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-sky-300">車站與大廳環境音 (183)</a>
+            <a href="https://www.casper.tw/sound-effects/license/" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-sky-300">商業授權說明</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // 1. COMPLETE GROUNDED DATASET: 30 STARTER CARDS & 10 ACOUSTIC RELICS
+    // =========================================================================
+    const ALL_CARDS = [
+      // 一、基礎與通用卡牌 (4 張)
+      {
+        id: 'C01', name: '奧術音彈', faction: '基礎通用', cost: 1, charge: 0.0,
+        normalDesc: '單體 6 傷（瞬發無需蓄力）', peakDesc: '瞬發穩定輸出 6 傷並標記音波',
+        sfxName: '魔法飛彈咻聲', sfxCategory: '遊戲音效 (11,008)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/game/',
+        styleTag: '風格化', synthType: 'missile', baseDmg: 6, aoe: 'single'
+      },
+      {
+        id: 'C02', name: '鐵壁共鳴盾', faction: '基礎通用', cost: 1, charge: 0.8,
+        normalDesc: '獲得 7 護盾', peakDesc: '獲得 12 護盾並對目標軌反彈 4 傷',
+        sfxName: '金屬格擋聲', sfxCategory: '盾牌格擋 (93)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/game/',
+        styleTag: '寫實', synthType: 'metal_shield', baseDmg: 0, shield: 7, peakShield: 12, aoe: 'self'
+      },
+      {
+        id: 'C03', name: '雙發脈衝', faction: '基礎通用', cost: 1, charge: 0.6,
+        normalDesc: '單體 4 傷 × 2', peakDesc: '單體 7 傷 × 2 連發貫穿',
+        sfxName: '復古雷射槍雙發聲', sfxCategory: '雷射 (112)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/game/',
+        styleTag: '風格化', synthType: 'dual_laser', baseDmg: 8, hits: 2, aoe: 'single'
+      },
+      {
+        id: 'C04', name: '韻律重洗', faction: '基礎通用', cost: 0, charge: 0.5,
+        normalDesc: '抽 1 張牌並回復 1 魔力', peakDesc: '抽 2 張牌並回復 2 魔力',
+        sfxName: '嘩啦洗牌聲', sfxCategory: '撲克牌 (51)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/game/',
+        styleTag: '寫實', synthType: 'card_shuffle', baseDmg: 0, draw: 1, manaGain: 1, aoe: 'self'
+      },
+
+      // 二、流派一：奧術元素流 (7 張)
+      {
+        id: 'A01', name: '瞬光打擊', faction: '奧術元素流', cost: 1, charge: 0.0,
+        normalDesc: '單體 7 傷 + 閃光標記', peakDesc: '擊殺敵人時立即返還 1 點魔力',
+        sfxName: '閃光魔法 (Flash)', sfxCategory: '魔法音效 (1,128)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/game/',
+        styleTag: '風格化', synthType: 'flash_magic', baseDmg: 7, refundOnKill: true, aoe: 'single'
+      },
+      {
+        id: 'A02', name: '掃頻橫斬', faction: '奧術元素流', cost: 2, charge: 1.4,
+        normalDesc: '全三軌 AOE 8 傷', peakDesc: '全三軌 16 傷 + 擊退 + 下張減 1 費',
+        sfxName: '掃頻魔法 (Sweep)', sfxCategory: '魔法音效 (1,128)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/game/',
+        styleTag: '風格化', synthType: 'sweep_magic', baseDmg: 8, knockback: 45, aoe: 'all'
+      },
+      {
+        id: 'A03', name: '虛空漩渦', faction: '奧術元素流', cost: 1, charge: 1.2,
+        normalDesc: '將全體敵人拉向中央聲道並造 5 傷', peakDesc: '聚怪至中軌 + 10 傷 + 暈眩 1.5 秒',
+        sfxName: '漩渦魔法 (Vortex)', sfxCategory: '魔法音效 (1,128)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/game/',
+        styleTag: '風格化', synthType: 'vortex_magic', baseDmg: 5, pullCenter: true, stun: 1.5, aoe: 'all'
+      },
+      {
+        id: 'A04', name: '爆裂火球', faction: '奧術元素流', cost: 2, charge: 1.8,
+        normalDesc: '單軌 14 傷 + 燃燒 DoT', peakDesc: '單軌 28 傷 + 燃燒 + 下張減 1 費',
+        sfxName: '火球命中爆裂聲', sfxCategory: '火系魔法 (144)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/game/',
+        styleTag: '寫實', synthType: 'fireball', baseDmg: 14, dot: 4, aoe: 'lane'
+      },
+      {
+        id: 'A05', name: '霜晶封鎖', faction: '奧術元素流', cost: 1, charge: 1.3,
+        normalDesc: '單軌 6 傷 + 緩速 40%', peakDesc: '單軌 12 傷 + 完全凍結 2.2 秒',
+        sfxName: '冰晶凍結劈啪聲', sfxCategory: '冰系魔法 (136)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/game/',
+        styleTag: '寫實', synthType: 'ice_freeze', baseDmg: 6, slow: 2.5, stun: 2.0, aoe: 'lane'
+      },
+      {
+        id: 'A06', name: '天雷劈擊', faction: '奧術元素流', cost: 2, charge: 2.1,
+        normalDesc: '全場落雷 18 傷', peakDesc: '全場 36 傷 + 感電 + 下張減 1 費',
+        sfxName: '雷系魔法劈擊聲', sfxCategory: '雷系魔法 (106)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/game/',
+        styleTag: '寫實', synthType: 'thunder_strike', baseDmg: 18, dot: 3, aoe: 'all'
+      },
+      {
+        id: 'A07', name: '聖光湧泉', faction: '奧術元素流', cost: 1, charge: 1.5,
+        normalDesc: '鍊金塔回血 6 點', peakDesc: '鍊金塔回血 12 點 + 獲得 6 護盾',
+        sfxName: '聖光轟擊 + 療癒微風', sfxCategory: '治療魔法 (278)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/game/',
+        styleTag: '風格化', synthType: 'holy_heal', baseDmg: 0, heal: 6, shield: 6, aoe: 'self'
+      },
+
+      // 三、流派二：重工星艦流 (7 張)
+      {
+        id: 'S01', name: '反應爐超載', faction: '重工星艦流', cost: 1, charge: 1.6,
+        normalDesc: '回復 2 點魔力', peakDesc: '回復 3 點魔力 + 獲得 8 護盾',
+        sfxName: '反應爐充能', sfxCategory: '蓄力充能 (1,713)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/game/',
+        styleTag: '寫實', synthType: 'reactor_charge', baseDmg: 0, manaGain: 2, shield: 5, peakShield: 8, aoe: 'self'
+      },
+      {
+        id: 'S02', name: '電漿步槍', faction: '重工星艦流', cost: 1, charge: 0.9,
+        normalDesc: '單體穿甲 9 傷', peakDesc: '無視護甲造成 18 點高熱傷害',
+        sfxName: '電漿步槍射擊聲', sfxCategory: '雷射 (112)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/game/',
+        styleTag: '寫實', synthType: 'plasma_rifle', baseDmg: 9, armorPierce: true, aoe: 'single'
+      },
+      {
+        id: 'S03', name: '持續雷射束', faction: '重工星艦流', cost: 2, charge: 2.4,
+        normalDesc: '單軌貫穿 16 傷', peakDesc: '單軌貫穿 32 傷 + 下張減 1 費',
+        sfxName: '持續雷射光束嗡鳴', sfxCategory: '雷射 (112)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/game/',
+        styleTag: '風格化', synthType: 'beam_hum', baseDmg: 16, armorPierce: true, aoe: 'lane'
+      },
+      {
+        id: 'S04', name: '冷凍射線', faction: '重工星艦流', cost: 1, charge: 1.1,
+        normalDesc: '單軌 7 傷 + 緩速', peakDesc: '單軌 14 傷 + 冰封 2.5 秒',
+        sfxName: '冷凍光線射擊聲', sfxCategory: '能量武器 (35)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/game/',
+        styleTag: '風格化', synthType: 'cryo_ray', baseDmg: 7, stun: 2.2, aoe: 'lane'
+      },
+      {
+        id: 'S05', name: '離子砲齊射', faction: '重工星艦流', cost: 2, charge: 2.2,
+        normalDesc: '全場隨機轟擊 21 傷', peakDesc: '全場齊射 42 傷 + 下張減 1 費',
+        sfxName: '離子砲轟擊聲', sfxCategory: '能量武器 (35)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/game/',
+        styleTag: '寫實', synthType: 'ion_cannon', baseDmg: 21, aoe: 'all'
+      },
+      {
+        id: 'S06', name: '電磁軌道砲', faction: '重工星艦流', cost: 3, charge: 3.0,
+        normalDesc: '單軌超重貫穿 32 傷', peakDesc: '單軌貫穿 64 傷 + 擊飛 + 下張減 1 費',
+        sfxName: '電磁砲射擊聲', sfxCategory: '能量武器 (35)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/game/',
+        styleTag: '寫實', synthType: 'railgun', baseDmg: 32, armorPierce: true, knockback: 80, aoe: 'lane'
+      },
+      {
+        id: 'S07', name: '曲速力場', faction: '重工星艦流', cost: 2, charge: 2.5,
+        normalDesc: '獲得 12 護盾 + 擊退敵軍', peakDesc: '22 護盾 + 全敵推回起點 + 下張減 1 費',
+        sfxName: '曲速躍遷蓄力', sfxCategory: '太空船 (1,659)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/game/',
+        styleTag: '寫實', synthType: 'warp_field', baseDmg: 4, shield: 12, peakShield: 22, knockback: 110, aoe: 'all'
+      },
+
+      // 四、流派三：古樂共鳴流 (6 張)
+      {
+        id: 'M01', name: '古箏疾奏', faction: '古樂共鳴流', cost: 1, charge: 0.7,
+        normalDesc: '單軌 6 傷 + 連擊 +1', peakDesc: '單軌 12 傷 + 連擊數 +3',
+        sfxName: '古箏刮奏', sfxCategory: '東亞弦樂器 (58)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/game/',
+        styleTag: '寫實', synthType: 'guzheng', baseDmg: 6, comboAdd: 2, aoe: 'lane'
+      },
+      {
+        id: 'M02', name: '琵琶輪指', faction: '古樂共鳴流', cost: 1, charge: 0.8,
+        normalDesc: '三連彈 9 傷 + 連擊 +2', peakDesc: '三連彈 18 傷 + 連擊數 +4',
+        sfxName: '琵琶輪指', sfxCategory: '東亞弦樂器 (58)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/game/',
+        styleTag: '寫實', synthType: 'pipa', baseDmg: 9, comboAdd: 3, aoe: 'single'
+      },
+      {
+        id: 'M03', name: '空靈簫音', faction: '古樂共鳴流', cost: 1, charge: 1.2,
+        normalDesc: '全敵緩速 + 抽 1 張牌', peakDesc: '全敵沉睡 2 秒 + 抽 2 張牌 + 連擊 +2',
+        sfxName: '空靈簫聲', sfxCategory: '笛聲 (68)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/game/',
+        styleTag: '寫實', synthType: 'flute_xiao', baseDmg: 4, stun: 1.8, draw: 1, aoe: 'all'
+      },
+      {
+        id: 'M04', name: '豎琴祝禱', faction: '古樂共鳴流', cost: 1, charge: 1.0,
+        normalDesc: '獲得 8 + 連擊數護盾', peakDesc: '獲得 14 + (連擊數×1.5) 護盾並回血 4 點',
+        sfxName: '豎琴上行刮奏 + 豎琴治療', sfxCategory: '撥弦聲 (64)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/game/',
+        styleTag: '寫實', synthType: 'harp_gliss', baseDmg: 0, shield: 8, peakShield: 14, heal: 4, comboScaleShield: true, aoe: 'self'
+      },
+      {
+        id: 'M05', name: '大鍵琴滑階', faction: '古樂共鳴流', cost: 0, charge: 0.5,
+        normalDesc: '造成 5 + 連擊數傷害', peakDesc: '造成 10 + (連擊數×2) 爆發傷害',
+        sfxName: '大鍵琴上行音階', sfxCategory: '撥弦聲 (64)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/game/',
+        styleTag: '寫實', synthType: 'harpsichord', baseDmg: 5, comboScaleDmg: true, aoe: 'single'
+      },
+      {
+        id: 'M06', name: '百鳥笙和鳴', faction: '古樂共鳴流', cost: 2, charge: 1.8,
+        normalDesc: '全體 12 + 連擊傷害', peakDesc: '全體 24 + (連擊×2) 傷害 + 下張減 1 費',
+        sfxName: '笙和弦', sfxCategory: '世界樂器 (49)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/game/',
+        styleTag: '寫實', synthType: 'sheng_chord', baseDmg: 12, comboScaleDmg: true, comboAdd: 3, aoe: 'all'
+      },
+
+      // 五、流派四：混沌諧星流・放屁毒霧與綜藝反應 (6 張)
+      {
+        id: 'F01', name: '微塵毒針', faction: '混沌諧星流', cost: 0, charge: 0.25,
+        normalDesc: '單體 3 傷 + 中毒 4 層', peakDesc: '單體 6 傷 + 中毒 8 層 + 抽 1 張牌',
+        sfxName: '輕輕一聲 Tiny Puff (0.25s)', sfxCategory: '放屁聲 (117)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/fart/',
+        styleTag: '寫實', synthType: 'fart_puff', baseDmg: 3, dot: 4, draw: 1, aoe: 'single'
+      },
+      {
+        id: 'F02', name: '尖響干擾波', faction: '混沌諧星流', cost: 1, charge: 0.30,
+        normalDesc: '單體 6 傷 + 打斷敵方蓄力', peakDesc: '單體 12 傷 + 強制暈眩 2.0 秒',
+        sfxName: '短促尖響 Short Squeak (0.30s)', sfxCategory: '放屁聲 (117)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/fart/',
+        styleTag: '寫實', synthType: 'fart_squeak', baseDmg: 6, stun: 2.0, aoe: 'single'
+      },
+      {
+        id: 'F03', name: '濕黏酸蝕', faction: '混沌諧星流', cost: 1, charge: 0.60,
+        normalDesc: '單軌 8 傷 + 腐蝕破甲 + 中毒', peakDesc: '單軌 16 傷 + 立即疊加雙倍毒傷',
+        sfxName: '濕濕的噴聲 Wet Splutter (0.60s)', sfxCategory: '放屁聲 (117)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/fart/',
+        styleTag: '寫實', synthType: 'fart_wet', baseDmg: 8, dot: 6, armorPierce: true, aoe: 'lane'
+      },
+      {
+        id: 'F04', name: '綿長沼氣陣', faction: '混沌諧星流', cost: 2, charge: 3.15,
+        normalDesc: '全場劇毒 15 傷 + 持續毒霧', peakDesc: '全場 30 傷 + 群眾嘆氣暈眩 + 下張減 1 費',
+        sfxName: '拉長的低鳴 Long Rumble (3.15s)', sfxCategory: '放屁聲 (117)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/fart/',
+        styleTag: '寫實', synthType: 'fart_rumble', baseDmg: 15, dot: 8, stun: 2.2, aoe: 'all'
+      },
+      {
+        id: 'F05', name: '悲傷長號詛咒', faction: '混沌諧星流', cost: 1, charge: 2.95,
+        normalDesc: '全敵虛弱 + 造成 9 傷', peakDesc: '全場 18 傷 + 敵人因尷尬倒退並暈眩',
+        sfxName: '悲傷長號 Sad Trombone (2.95s)', sfxCategory: '搞笑與綜藝 (5,729)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/reactions/',
+        styleTag: '風格化', synthType: 'sad_trombone', baseDmg: 9, knockback: 55, stun: 1.5, aoe: 'all'
+      },
+      {
+        id: 'F06', name: '橡皮雞嘲諷', faction: '混沌諧星流', cost: 1, charge: 0.40,
+        normalDesc: '獲得 8 護盾並吸引砲火', peakDesc: '獲得 16 尖叫護盾並對全場造成 10 音波傷',
+        sfxName: '橡皮雞吱叫聲', sfxCategory: '發聲玩具 (86)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/reactions/',
+        styleTag: '寫實', synthType: 'rubber_chicken', baseDmg: 5, shield: 8, peakShield: 16, aoe: 'all'
+      }
+    ];
+
+    const ALL_RELICS = [
+      {
+        id: 'R01', name: '黃金調音叉', rarity: '普通', icon: '🔱',
+        desc: '所有卡牌的 Peak 共鳴判定視窗額外放寬 +40ms',
+        sfxName: '成就解鎖叮聲', sfxUrl: 'https://www.casper.tw/sound-effects/level-complete/', synthType: 'relic_chime'
+      },
+      {
+        id: 'R02', name: '雙聲道懷錶', rarity: '稀有', icon: '⏱️',
+        desc: '每次完美格擋後，全場敵人進入 2.0 秒子彈時間慢動作（攻速與移速 -50%）',
+        sfxName: '子彈時間降調聲', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/game/', synthType: 'relic_slowmo'
+      },
+      {
+        id: 'R03', name: '柏青哥彈珠袋', rarity: '普通', icon: '🔮',
+        desc: '連擊數每累積達 5 的倍數，自動發射 5 顆柏青哥鋼珠彈幕造成全場 10 傷',
+        sfxName: '鋼珠連續發射聲 (柏青哥 73)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/game/', synthType: 'relic_pachinko'
+      },
+      {
+        id: 'R04', name: '神社雙拍木', rarity: '稀有', icon: '⛩️',
+        desc: '達成 Peak 共鳴時，額外為鍊金塔回復 2 點耐久度與 3 點護盾',
+        sfxName: '神社雙拍手聲', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/reactions/', synthType: 'relic_clap'
+      },
+      {
+        id: 'R05', name: '幸運轉蛋殼', rarity: '普通', icon: '💊',
+        desc: '每波過關結算時額外獲得 +15 金幣，並強化戰利品品質',
+        sfxName: '轉蛋旋鈕與掉落聲', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/game/', synthType: 'relic_gacha'
+      },
+      {
+        id: 'R06', name: '存檔點火種', rarity: '普通', icon: '🔥',
+        desc: '營火修復提升至 +25 HP / +10 護盾；且塔防耐久歸零時可自動觸發 1 次緊急浴火重組',
+        sfxName: '存檔點火焰與鈴聲', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/game/', synthType: 'relic_campfire'
+      },
+      {
+        id: 'R07', name: '溢滿存錢筒', rarity: '稀有', icon: '🪙',
+        desc: '每持有 30 金幣，所有攻擊卡牌基礎傷害 +2（最高上限 +20 傷，手牌即時預覽）',
+        sfxName: '金幣傾瀉叮噹聲 (金幣 138)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/game/', synthType: 'relic_coins'
+      },
+      {
+        id: 'R08', name: '次元靜電球', rarity: '稀有', icon: '⚡',
+        desc: '火焰、雷電與沼氣毒素 DoT 每次跳傷額外 +4，並釋放連鎖靜電弧擴散全聲道',
+        sfxName: '靜電場 (雷系魔法 106)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/game/', synthType: 'relic_static'
+      },
+      {
+        id: 'R09', name: '綜藝打地鼠槌', rarity: '傳說', icon: '🔨',
+        desc: '敵人逼近鍊金塔防線時，自動觸發木槌重擊將其震退並暈眩 2 秒（每波限 1 次）',
+        sfxName: '打地鼠木槌聲 (敲頭聲 11)', sfxUrl: 'https://www.casper.tw/sound-effects/zh-tw/game/', synthType: 'relic_mallet'
+      },
+      {
+        id: 'R10', name: '頻譜煉金爐', rarity: '傳說', icon: '⚗️',
+        desc: '切換「寫實／風格化」調音台後，下一張打出的卡牌傷害直接 +50% 並淨化頭目聲學干擾',
+        sfxName: '獎盃鐘響 (1.59s)', sfxUrl: 'https://www.casper.tw/sound-effects/level-complete/', synthType: 'relic_bell'
+      }
+    ];
+
+    // Bespoke SVG Card Artwork Generator for Each Faction & Card Type
+    function getCardArtworkSVG(card) {
+      const chg = getEffectiveCardCharge(card);
+      // Draw mini envelope curve inside card banner
+      const peakX = chg <= 0.01 ? 18 : 96;
+      const envPath = chg <= 0.01
+        ? 'M 10 38 L 18 8 L 28 36 L 130 38'
+        : 'M 10 38 Q 55 34 96 8 L 114 36 L 130 38';
+
+      if (card.faction === '奧術元素流') {
+        return `<svg viewBox="0 0 140 44" class="w-full h-11 rounded-lg bg-slate-950/90 border border-sky-500/30">
+          <defs>
+            <linearGradient id="g_${card.id}" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#0ea5e9" stop-opacity="0.35"/>
+              <stop offset="100%" stop-color="#6366f1" stop-opacity="0.08"/>
+            </linearGradient>
+          </defs>
+          <rect width="140" height="44" fill="url(#g_${card.id})"/>
+          <circle cx="28" cy="22" r="13" fill="none" stroke="#38bdf8" stroke-width="1.4" stroke-dasharray="3 2"/>
+          <polygon points="28,11 37,27 19,27" fill="none" stroke="#7dd3fc" stroke-width="1.2"/>
+          <path d="${envPath}" fill="none" stroke="#38bdf8" stroke-width="1.8"/>
+          <circle cx="${peakX}" cy="8" r="3" fill="#fde047"/>
+        </svg>`;
+      }
+      if (card.faction === '重工星艦流') {
+        return `<svg viewBox="0 0 140 44" class="w-full h-11 rounded-lg bg-slate-950/90 border border-amber-500/30">
+          <rect width="140" height="44" fill="rgba(245,158,11,0.12)"/>
+          <polygon points="16,22 24,10 36,10 44,22 36,34 24,34" fill="none" stroke="#f59e0b" stroke-width="1.5"/>
+          <circle cx="30" cy="22" r="5" fill="#fbbf24"/>
+          <path d="${envPath}" fill="none" stroke="#fbbf24" stroke-width="1.8"/>
+          <circle cx="${peakX}" cy="8" r="3.2" fill="#22d3ee"/>
+        </svg>`;
+      }
+      if (card.faction === '古樂共鳴流') {
+        return `<svg viewBox="0 0 140 44" class="w-full h-11 rounded-lg bg-slate-950/90 border border-emerald-500/30">
+          <rect width="140" height="44" fill="rgba(16,185,129,0.12)"/>
+          <line x1="14" y1="13" x2="46" y2="13" stroke="#34d399" stroke-width="1.1"/>
+          <line x1="14" y1="22" x2="46" y2="22" stroke="#6ee7b7" stroke-width="1.1"/>
+          <line x1="14" y1="31" x2="46" y2="31" stroke="#34d399" stroke-width="1.1"/>
+          <circle cx="30" cy="22" r="9" fill="none" stroke="#a7f3d0" stroke-width="1.4"/>
+          <path d="${envPath}" fill="none" stroke="#34d399" stroke-width="1.8"/>
+          <circle cx="${peakX}" cy="8" r="3" fill="#fde047"/>
+        </svg>`;
+      }
+      if (card.faction === '混沌諧星流') {
+        return `<svg viewBox="0 0 140 44" class="w-full h-11 rounded-lg bg-slate-950/90 border border-pink-500/30">
+          <rect width="140" height="44" fill="rgba(236,72,153,0.13)"/>
+          <circle cx="24" cy="24" r="8" fill="rgba(192,132,252,0.35)" stroke="#f472b6" stroke-width="1.4"/>
+          <circle cx="35" cy="17" r="5" fill="rgba(168,85,247,0.35)" stroke="#e879f9" stroke-width="1.2"/>
+          <circle cx="37" cy="29" r="4" fill="rgba(236,72,153,0.4)" stroke="#f472b6" stroke-width="1"/>
+          <path d="${envPath}" fill="none" stroke="#f472b6" stroke-width="1.8"/>
+          <circle cx="${peakX}" cy="8" r="3" fill="#a3e635"/>
+        </svg>`;
+      }
+      return `<svg viewBox="0 0 140 44" class="w-full h-11 rounded-lg bg-slate-950/90 border border-slate-700">
+        <rect width="140" height="44" fill="rgba(148,163,184,0.1)"/>
+        <path d="M 24 12 L 24 26 Q 24 32 30 32 Q 36 32 36 26 L 36 12 M 30 32 L 30 38" fill="none" stroke="#cbd5e1" stroke-width="1.6"/>
+        <path d="${envPath}" fill="none" stroke="#94a3b8" stroke-width="1.8"/>
+        <circle cx="${peakX}" cy="8" r="3" fill="#fde047"/>
+      </svg>`;
+    }
+
+    // =========================================================================
+    // 2. WEB AUDIO API REAL-TIME SOUND & ENVELOPE SYNTHESIZER
+    // =========================================================================
+    class SoundAlchemistAudio {
+      constructor() {
+        this.ctx = null;
+        this.compressor = null;
+        this.analyser = null;
+        this.freqData = null;
+        this.timeData = null;
+        this.muted = false;
+        this.ambientEnabled = true;
+        this.ambientOsc = null;
+        this.ambientGain = null;
+      }
+
+      init() {
+        if (this.ctx) {
+          if (this.ctx.state === 'suspended') this.ctx.resume();
+          return;
+        }
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        this.ctx = new AudioCtx();
+        this.compressor = this.ctx.createDynamicsCompressor();
+        this.compressor.threshold.setValueAtTime(-12, this.ctx.currentTime);
+        this.compressor.knee.setValueAtTime(18, this.ctx.currentTime);
+        this.compressor.ratio.setValueAtTime(6, this.ctx.currentTime);
+        this.compressor.attack.setValueAtTime(0.003, this.ctx.currentTime);
+        this.compressor.release.setValueAtTime(0.15, this.ctx.currentTime);
+
+        this.analyser = this.ctx.createAnalyser();
+        this.analyser.fftSize = 256;
+        this.freqData = new Uint8Array(this.analyser.frequencyBinCount);
+        this.timeData = new Uint8Array(this.analyser.frequencyBinCount);
+
+        this.compressor.connect(this.analyser);
+        this.analyser.connect(this.ctx.destination);
+        this.updateAmbientDrone(1);
+      }
+
+      createPanner(panVal = 0) {
+        if (!this.ctx) return null;
+        if (this.ctx.createStereoPanner) {
+          const p = this.ctx.createStereoPanner();
+          p.pan.setValueAtTime(Math.max(-1, Math.min(1, panVal)), this.ctx.currentTime);
+          p.connect(this.compressor);
+          return p;
+        }
+        return this.compressor;
+      }
+
+      updateAmbientDrone(actIndex = 1) {
+        if (!this.ctx) return;
+        if (this.ambientOsc) {
+          try { this.ambientOsc.stop(); } catch (e) {}
+          this.ambientOsc = null;
+        }
+        if (this.muted || !this.ambientEnabled) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const filt = this.ctx.createBiquadFilter();
+        const gain = this.ctx.createGain();
+        const baseFreq = actIndex === 1 ? 52 : (actIndex === 2 ? 68 : 44);
+        osc.type = state.timbreMode === 'stylized' ? 'sawtooth' : 'triangle';
+        osc.frequency.setValueAtTime(baseFreq, now);
+        filt.type = 'lowpass';
+        filt.frequency.setValueAtTime(state.timbreMode === 'stylized' ? 220 : 135, now);
+        gain.gain.setValueAtTime(0.035, now);
+        osc.connect(filt);
+        filt.connect(gain);
+        gain.connect(this.compressor);
+        osc.start();
+        this.ambientOsc = osc;
+        this.ambientGain = gain;
+      }
+
+      playChargeEnvelope(card, panVal = 0) {
+        this.init();
+        if (!this.ctx || this.muted) return;
+        const dur = Math.max(0.22, getEffectiveCardCharge(card) || 0.35);
+        const now = this.ctx.currentTime;
+        const out = this.createPanner(panVal);
+        const isStylized = state.timbreMode === 'stylized';
+
+        if (card.synthType && card.synthType.startsWith('fart_')) {
+          this.playFartEnvelope(card.synthType, dur, out, isStylized);
+          return;
+        }
+        if (card.synthType === 'sad_trombone') {
+          this.playSadTrombone(dur, out, isStylized);
+          return;
+        }
+
+        const osc = this.ctx.createOscillator();
+        const sub = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = isStylized ? 'sawtooth' : 'sine';
+        sub.type = isStylized ? 'square' : 'triangle';
+
+        const startF = card.faction === '重工星艦流' ? 75 : (card.faction === '古樂共鳴流' ? 220 : 140);
+        const peakF = startF * (isStylized ? 4.2 : 3.1);
+
+        osc.frequency.setValueAtTime(startF, now);
+        osc.frequency.exponentialRampToValueAtTime(peakF, now + dur * 0.82);
+        osc.frequency.exponentialRampToValueAtTime(startF * 1.5, now + dur);
+
+        sub.frequency.setValueAtTime(startF * 0.5, now);
+        sub.frequency.exponentialRampToValueAtTime(peakF * 0.5, now + dur * 0.82);
+
+        gain.gain.setValueAtTime(0.01, now);
+        gain.gain.linearRampToValueAtTime(0.28, now + dur * 0.82);
+        gain.gain.exponentialRampToValueAtTime(0.008, now + dur);
+
+        osc.connect(gain);
+        sub.connect(gain);
+        gain.connect(out);
+        osc.start(now);
+        sub.start(now);
+        osc.stop(now + dur);
+        sub.stop(now + dur);
+      }
+
+      playFartEnvelope(type, dur, outNode, isStylized) {
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const mod = this.ctx.createOscillator();
+        const modGain = this.ctx.createGain();
+        const filt = this.ctx.createBiquadFilter();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sawtooth';
+        mod.type = 'sine';
+
+        if (type === 'fart_puff') {
+          osc.frequency.setValueAtTime(160, now);
+          osc.frequency.exponentialRampToValueAtTime(65, now + dur);
+          mod.frequency.setValueAtTime(28, now);
+          modGain.gain.setValueAtTime(40, now);
+        } else if (type === 'fart_squeak') {
+          osc.frequency.setValueAtTime(340, now);
+          osc.frequency.exponentialRampToValueAtTime(520, now + dur * 0.7);
+          osc.frequency.exponentialRampToValueAtTime(240, now + dur);
+          mod.frequency.setValueAtTime(45, now);
+          modGain.gain.setValueAtTime(60, now);
+        } else if (type === 'fart_wet') {
+          osc.frequency.setValueAtTime(115, now);
+          osc.frequency.linearRampToValueAtTime(78, now + dur);
+          mod.frequency.setValueAtTime(36, now);
+          modGain.gain.setValueAtTime(85, now);
+        } else {
+          osc.frequency.setValueAtTime(68, now);
+          osc.frequency.linearRampToValueAtTime(52, now + dur * 0.82);
+          osc.frequency.linearRampToValueAtTime(42, now + dur);
+          mod.frequency.setValueAtTime(22, now);
+          modGain.gain.setValueAtTime(35, now);
+        }
+
+        filt.type = 'bandpass';
+        filt.frequency.setValueAtTime(isStylized ? 480 : 260, now);
+        filt.Q.setValueAtTime(3.2, now);
+
+        gain.gain.setValueAtTime(0.02, now);
+        gain.gain.linearRampToValueAtTime(0.36, now + dur * 0.8);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + dur);
+
+        mod.connect(modGain);
+        modGain.connect(osc.frequency);
+        osc.connect(filt);
+        filt.connect(gain);
+        gain.connect(outNode);
+
+        osc.start(now);
+        mod.start(now);
+        osc.stop(now + dur);
+        mod.stop(now + dur);
+      }
+
+      playSadTrombone(dur = 1.6, outNode = null, isStylized = false) {
+        this.init();
+        if (!this.ctx || this.muted) return;
+        const now = this.ctx.currentTime;
+        const out = outNode || this.compressor;
+        const notes = [293.66, 277.18, 261.63, 246.94];
+        const step = dur / 4;
+        notes.forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = isStylized ? 'square' : 'sawtooth';
+          const t0 = now + idx * step;
+          osc.frequency.setValueAtTime(freq, t0);
+          if (idx === 3) {
+            osc.frequency.linearRampToValueAtTime(freq * 0.86, t0 + step * 0.95);
+          }
+          gain.gain.setValueAtTime(0.01, t0);
+          gain.gain.linearRampToValueAtTime(0.22, t0 + 0.04);
+          gain.gain.exponentialRampToValueAtTime(0.008, t0 + step * 0.95);
+          osc.connect(gain);
+          gain.connect(out);
+          osc.start(t0);
+          osc.stop(t0 + step);
+        });
+      }
+
+      playImpactOrRelease(isPeak, card, panVal = 0) {
+        this.init();
+        if (!this.ctx || this.muted) return;
+        const now = this.ctx.currentTime;
+        const out = this.createPanner(panVal);
+        const isStylized = state.timbreMode === 'stylized';
+
+        if (isPeak) {
+          const freqs = isStylized ? [523.25, 659.25, 783.99, 1046.5] : [440, 554.37, 659.25, 880];
+          freqs.forEach((f, i) => {
+            const osc = this.ctx.createOscillator();
+            const g = this.ctx.createGain();
+            osc.type = isStylized ? 'square' : 'triangle';
+            osc.frequency.setValueAtTime(f, now + i * 0.045);
+            g.gain.setValueAtTime(0.22, now + i * 0.045);
+            g.gain.exponentialRampToValueAtTime(0.005, now + i * 0.045 + 0.32);
+            osc.connect(g);
+            g.connect(out);
+            osc.start(now + i * 0.045);
+            osc.stop(now + i * 0.045 + 0.33);
+          });
+        } else {
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = isStylized ? 'square' : 'sine';
+          osc.frequency.setValueAtTime(320, now);
+          osc.frequency.exponentialRampToValueAtTime(110, now + 0.22);
+          g.gain.setValueAtTime(0.24, now);
+          g.gain.exponentialRampToValueAtTime(0.008, now + 0.23);
+          osc.connect(g);
+          g.connect(out);
+          osc.start(now);
+          osc.stop(now + 0.24);
+        }
+      }
+
+      playShieldParry(type = 'metal', success = true) {
+        this.init();
+        if (!this.ctx || this.muted) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        if (!success) {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(150, now);
+          osc.frequency.linearRampToValueAtTime(55, now + 0.35);
+          g.gain.setValueAtTime(0.26, now);
+          g.gain.exponentialRampToValueAtTime(0.008, now + 0.36);
+        } else if (type === 'metal') {
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(880, now);
+          osc.frequency.exponentialRampToValueAtTime(420, now + 0.25);
+          g.gain.setValueAtTime(0.25, now);
+          g.gain.exponentialRampToValueAtTime(0.005, now + 0.26);
+        } else if (type === 'crystal') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(1320, now);
+          osc.frequency.exponentialRampToValueAtTime(1760, now + 0.28);
+          g.gain.setValueAtTime(0.25, now);
+          g.gain.exponentialRampToValueAtTime(0.005, now + 0.29);
+        } else {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(310, now);
+          osc.frequency.exponentialRampToValueAtTime(920, now + 0.25);
+          g.gain.setValueAtTime(0.25, now);
+          g.gain.exponentialRampToValueAtTime(0.005, now + 0.26);
+        }
+        osc.connect(g);
+        g.connect(this.compressor);
+        osc.start(now);
+        osc.stop(now + 0.38);
+      }
+
+      playEnemyTelegraph(laneIndex = 1, weakness = 'metal', isBoss = false) {
+        this.init();
+        if (!this.ctx || this.muted) return;
+        const pan = laneIndex === 0 ? -0.8 : (laneIndex === 2 ? 0.8 : 0.0);
+        const out = this.createPanner(pan);
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const cue = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        const cueG = this.ctx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(isBoss ? 78 : 115, now);
+        osc.frequency.linearRampToValueAtTime(isBoss ? 42 : 64, now + 0.45);
+        g.gain.setValueAtTime(0.01, now);
+        g.gain.linearRampToValueAtTime(isBoss ? 0.24 : 0.16, now + 0.12);
+        g.gain.exponentialRampToValueAtTime(0.008, now + 0.46);
+
+        if (weakness === 'metal') {
+          cue.type = 'square';
+          cue.frequency.setValueAtTime(660, now + 0.08);
+          cue.frequency.exponentialRampToValueAtTime(440, now + 0.32);
+        } else if (weakness === 'crystal') {
+          cue.type = 'sine';
+          cue.frequency.setValueAtTime(1280, now + 0.08);
+          cue.frequency.exponentialRampToValueAtTime(1620, now + 0.35);
+        } else {
+          cue.type = 'sawtooth';
+          cue.frequency.setValueAtTime(220, now + 0.08);
+          cue.frequency.exponentialRampToValueAtTime(580, now + 0.35);
+        }
+        cueG.gain.setValueAtTime(0.005, now + 0.08);
+        cueG.gain.linearRampToValueAtTime(0.15, now + 0.14);
+        cueG.gain.exponentialRampToValueAtTime(0.005, now + 0.38);
+
+        osc.connect(g);
+        g.connect(out);
+        cue.connect(cueG);
+        cueG.connect(out);
+
+        osc.start(now);
+        osc.stop(now + 0.47);
+        cue.start(now + 0.08);
+        cue.stop(now + 0.40);
+      }
+
+      getLiveRMS() {
+        if (!this.analyser || !this.timeData || this.muted) return 0;
+        this.analyser.getByteTimeDomainData(this.timeData);
+        let sum = 0;
+        for (let i = 0; i < this.timeData.length; i++) {
+          const v = (this.timeData[i] - 128) / 128;
+          sum += v * v;
+        }
+        return Math.sqrt(sum / this.timeData.length);
+      }
+    }
+
+    const audio = new SoundAlchemistAudio();
+
+    // =========================================================================
+    // 3. GAME STATE & CORE COMBAT ENGINE v3.0
+    // =========================================================================
+    const state = {
+      act: 1,
+      wave: 1,
+      maxWaves: 6,
+      hp: 80,
+      maxHp: 80,
+      armor: 0,
+      mana: 3,
+      maxMana: 3,
+      resonanceCharge: 0.0,
+      combo: 0,
+      maxCombo: 0,
+      gold: 80,
+      selectedLane: 1,
+      timbreMode: 'natural',
+      blindMode: false,
+      nextCardBuff: false,
+      nextCardDiscount: 0,
+      bossNoiseJamming: false,
+      malletUsedThisWave: false,
+      r06ReviveUsed: false,
+      gameOver: false,
+      bulletTimeRemaining: 0,
+      stunRemaining: 0,
+      screenShake: 0,
+      ownedRelics: ['R01', 'R02', 'R03', 'R06'],
+      deckPreset: 'balanced',
+      masterDeck: [],
+      drawPile: [],
+      discardPile: [],
+      hand: [],
+      enemies: [],
+      particles: [],
+      projectiles: [],
+      soundBeams: [],
+      lightningArcs: [],
+      floatingTexts: [],
+      activeCast: null,
+      codexFilter: 'all',
+      totalKills: 0,
+      totalCasts: 0,
+      peakHits: 0,
+      bestWavesCleared: 1
+    };
+
+    const ACT_INFO = {
+      1: {
+        name: 'ACT I · 幽暗地牢',
+        amb: '洞穴隆隆聲 + 哥布林低吼聲',
+        enemies: ['哥布林斥候', '深淵史萊姆', '石魔像守衛'],
+        bossName: '【章節頭目】深淵石魔像王',
+        bossAbility: '低頻震障（完美格擋後立即切換護盾材質）'
+      },
+      2: {
+        name: 'ACT II · 失落星艦',
+        amb: '反應爐核心 + 機械野獸咆哮',
+        enemies: ['自動人偶', '電漿機械獸', '泰坦重裝機兵'],
+        bossName: '【章節頭目】泰坦鋼鐵九頭蛇',
+        bossAbility: '白噪音干擾場（Peak 視窗縮窄 18ms，切換調音台可淨化）'
+      },
+      3: {
+        name: 'ACT III · 次元裂隙',
+        amb: '蟲洞低鳴聲 + 古龍低鳴聲',
+        enemies: ['深海克拉肯', '次元古龍', '暗星利維坦'],
+        bossName: '【終焉頭目】次元裂隙古龍',
+        bossAbility: '雙重相位力場（切換護盾材質 + 召喚裂隙幼龍）'
+      }
+    };
+
+    const SHIELD_TYPES = ['metal', 'crystal', 'energy'];
+    const SHIELD_NAMES = { metal: '金屬 [Q]', crystal: '水晶 [W]', energy: '能量 [E]' };
+    const SHIELD_COLORS = { metal: '#fbbf24', crystal: '#22d3ee', energy: '#e879f9' };
+
+    function cloneCardInstance(cardTemplate, upgraded = false) {
+      return {
+        ...cardTemplate,
+        uid: 'CI_' + Math.random().toString(36).slice(2, 9),
+        upgraded: Boolean(upgraded)
+      };
+    }
+
+    function getEffectiveCardCost(card) {
+      const base = card.cost || 0;
+      if (base > 0 && state.nextCardDiscount > 0) {
+        return Math.max(0, base - state.nextCardDiscount);
+      }
+      return base;
+    }
+
+    function getEffectiveCardCharge(card) {
+      const base = card.charge || 0;
+      if (base <= 0) return 0;
+      return card.upgraded ? Number((base * 0.88).toFixed(2)) : base;
+    }
+
+    function loadSavedRecord() {
+      try {
+        const saved = localStorage.getItem('sound_alchemist_best_wave');
+        if (saved) state.bestWavesCleared = parseInt(saved, 10) || 1;
+      } catch (e) {}
+      updateBestRecordBadge();
+    }
+
+    function saveBestRecord() {
+      const currentTotalWave = (state.act - 1) * state.maxWaves + state.wave;
+      if (currentTotalWave > state.bestWavesCleared) {
+        state.bestWavesCleared = currentTotalWave;
+        try {
+          localStorage.setItem('sound_alchemist_best_wave', String(state.bestWavesCleared));
+        } catch (e) {}
+      }
+      updateBestRecordBadge();
+    }
+
+    function updateBestRecordBadge() {
+      const el = document.getElementById('bestRecordBadge');
+      if (el) {
+        el.textContent = `最高紀錄：累計第 ${state.bestWavesCleared} 波`;
+      }
+    }
+
+    function hasRelic(id) {
+      return state.ownedRelics.includes(id);
+    }
+
+    function getPeakWindowSeconds(card = null) {
+      const base = state.timbreMode === 'stylized' ? 0.110 : 0.065;
+      const relicBonus = hasRelic('R01') ? 0.040 : 0;
+      const bossPenalty = state.bossNoiseJamming ? -0.018 : 0;
+      const raw = Math.max(0.040, base + relicBonus + bossPenalty);
+      const effCharge = card ? getEffectiveCardCharge(card) : 1.0;
+      if (card && effCharge > 0 && effCharge <= 0.5) {
+        return Math.max(0.145, raw);
+      }
+      return raw;
+    }
+
+    function computeCardNumbers(card, isPeak = false) {
+      let mult = isPeak ? 2.0 : 1.0;
+      if (card.upgraded) {
+        mult *= 1.35;
+      }
+      if (state.timbreMode === 'natural' && (card.aoe === 'single' || card.armorPierce)) {
+        mult *= 1.3;
+      }
+      if (state.nextCardBuff) {
+        mult *= 1.5;
+      }
+      const goldBonus = hasRelic('R07') ? Math.min(20, Math.floor(state.gold / 30) * 2) : 0;
+      let rawDmg = card.baseDmg || 0;
+      if (card.comboScaleDmg) {
+        rawDmg += state.combo * (isPeak ? 2 : 1);
+      }
+      const finalDmg = rawDmg > 0 ? Math.round((rawDmg + goldBonus) * mult) : 0;
+
+      let finalShield = 0;
+      if (card.shield) {
+        const baseSh = isPeak && card.peakShield ? card.peakShield : Math.round(card.shield * (isPeak ? 1.6 : 1));
+        finalShield = Math.round(baseSh * (card.upgraded ? 1.35 : 1.0));
+        if (card.comboScaleShield) finalShield += Math.round(state.combo * (isPeak ? 1.5 : 1.0));
+      }
+      return { dmg: finalDmg, shield: finalShield };
+    }
+
+    function showToast(msg) {
+      const el = document.getElementById('toastBanner');
+      if (!el) return;
+      el.textContent = msg;
+      el.classList.remove('opacity-0', 'translate-y-2');
+      el.classList.add('opacity-100', 'translate-y-0');
+      clearTimeout(showToast._timer);
+      showToast._timer = setTimeout(() => {
+        el.classList.remove('opacity-100', 'translate-y-0');
+        el.classList.add('opacity-0', 'translate-y-2');
+      }, 2600);
+    }
+
+    function setTelemetry(soundName, categoryText) {
+      const nameEl = document.getElementById('telemetrySoundName');
+      const catEl = document.getElementById('telemetryCategory');
+      if (nameEl) nameEl.textContent = soundName;
+      if (catEl) catEl.textContent = '分類：' + categoryText;
+    }
+
+    function buildMasterDeckFromPreset() {
+      let pool = [];
+      if (state.deckPreset === 'arcane') {
+        pool = ALL_CARDS.filter(c => c.faction === '奧術元素流' || c.faction === '基礎通用');
+      } else if (state.deckPreset === 'starship') {
+        pool = ALL_CARDS.filter(c => c.faction === '重工星艦流' || c.faction === '基礎通用');
+      } else if (state.deckPreset === 'music') {
+        pool = ALL_CARDS.filter(c => c.faction === '古樂共鳴流' || c.faction === '基礎通用');
+      } else if (state.deckPreset === 'chaos') {
+        pool = ALL_CARDS.filter(c => c.faction === '混沌諧星流' || c.faction === '基礎通用');
+      } else {
+        const ids = ['C01', 'C02', 'C04', 'A01', 'A02', 'A03', 'S02', 'S06', 'M01', 'M04', 'F01', 'F04'];
+        pool = ids.map(id => ALL_CARDS.find(c => c.id === id)).filter(Boolean);
+      }
+      state.masterDeck = pool.map(c => cloneCardInstance(c, false));
+      state.drawPile = [...state.masterDeck].sort(() => Math.random() - 0.5);
+      state.discardPile = [];
+      state.hand = [];
+      drawCardsFromPile(5);
+    }
+
+    function drawCardsFromPile(count = 1) {
+      for (let i = 0; i < count; i++) {
+        if (state.hand.length >= 5) break;
+        if (state.drawPile.length === 0) {
+          if (state.discardPile.length === 0) break;
+          state.drawPile = [...state.discardPile].sort(() => Math.random() - 0.5);
+          state.discardPile = [];
+          setTelemetry('嘩啦洗牌聲 (棄牌堆重洗)', '撲克牌 (51)');
+        }
+        const nextCard = state.drawPile.pop();
+        if (nextCard) state.hand.push(nextCard);
+      }
+      updateHUD();
+      renderHandUI();
+    }
+
+    function drawNewHand() {
+      while (state.hand.length > 0) {
+        state.discardPile.push(state.hand.pop());
+      }
+      drawCardsFromPile(5);
+    }
+
+    function spawnWaveEnemies() {
+      state.enemies = [];
+      state.malletUsedThisWave = false;
+      const actCfg = ACT_INFO[state.act] || ACT_INFO[1];
+      const actMult = state.act === 1 ? 1.0 : (state.act === 2 ? 1.45 : 2.05);
+      const isBossWave = state.wave === state.maxWaves;
+
+      const bossBanner = document.getElementById('bossAlertBanner');
+      const bossText = document.getElementById('bossAlertText');
+
+      if (isBossWave) {
+        state.bossNoiseJamming = state.act >= 2;
+        if (bossBanner && bossText) {
+          bossBanner.classList.remove('hidden');
+          bossBanner.classList.add('flex');
+          bossText.textContent = `${actCfg.bossName}：${actCfg.bossAbility}`;
+        }
+        const bossHp = Math.round((135 + state.act * 65) * actMult);
+        state.enemies.push({
+          id: 'BOSS_' + Date.now(),
+          name: actCfg.bossName,
+          isBoss: true,
+          lane: 1,
+          yOffset: 0,
+          x: 0.78,
+          hp: bossHp,
+          maxHp: bossHp,
+          speed: 0.014,
+          weakness: SHIELD_TYPES[state.act % 3],
+          attackTimer: 3.4,
+          attackMax: 3.8,
+          telegraphing: false,
+          stunTimer: 0,
+          dotStacks: 0,
+          dotTimer: 0,
+          animSeed: Math.random() * 10
+        });
+        [0, 2].forEach((ln, idx) => {
+          const escortHp = Math.round((36 + state.act * 18) * actMult);
+          state.enemies.push({
+            id: 'ESC_' + Date.now() + '_' + idx,
+            name: actCfg.enemies[idx],
+            isBoss: false,
+            lane: ln,
+            yOffset: 0,
+            x: 0.70 + idx * 0.06,
+            hp: escortHp,
+            maxHp: escortHp,
+            speed: 0.022,
+            weakness: SHIELD_TYPES[(idx + 1) % 3],
+            attackTimer: 4.0 + idx * 1.1,
+            attackMax: 4.4,
+            telegraphing: false,
+            stunTimer: 0,
+            dotStacks: 0,
+            dotTimer: 0,
+            animSeed: Math.random() * 10
+          });
+        });
+        setTelemetry('頭目階段轉換低吼 (Boss Roar)', '遊戲音效 · 怪物 (1,085)');
+      } else {
+        state.bossNoiseJamming = false;
+        if (bossBanner) {
+          bossBanner.classList.add('hidden');
+          bossBanner.classList.remove('flex');
+        }
+        const count = 3 + Math.min(3, Math.floor((state.wave + 1) / 2));
+        for (let i = 0; i < count; i++) {
+          const lane = i % 3;
+          const shieldWeakness = SHIELD_TYPES[(i + state.wave) % 3];
+          const hpBase = Math.round((20 + state.act * 14 + state.wave * 9) * actMult);
+          const subOffset = (Math.floor(i / 3) % 2 === 0 ? -0.024 : 0.024) * (i >= 3 ? 1 : 0);
+          state.enemies.push({
+            id: 'E_' + Date.now() + '_' + i,
+            name: actCfg.enemies[i % actCfg.enemies.length],
+            isBoss: false,
+            lane,
+            yOffset: subOffset,
+            x: 0.72 + (i * 0.065),
+            hp: hpBase,
+            maxHp: hpBase,
+            speed: 0.021 + (i % 2) * 0.005,
+            weakness: shieldWeakness,
+            attackTimer: 3.1 + i * 1.2,
+            attackMax: 4.3,
+            telegraphing: false,
+            stunTimer: 0,
+            dotStacks: 0,
+            dotTimer: 0,
+            animSeed: Math.random() * 10
+          });
+        }
+      }
+      saveBestRecord();
+      updateHUD();
+      renderHandUI();
+    }
+
+    function getPrimaryTargetInLane(laneIndex) {
+      const inLane = state.enemies.filter(e => e.lane === laneIndex).sort((a, b) => a.x - b.x);
+      if (inLane.length > 0) return inLane[0];
+      const allSorted = [...state.enemies].sort((a, b) => a.x - b.x);
+      return allSorted[0] || null;
+    }
+
+    function initiateCardCast(handIndex) {
+      if (state.gameOver) return;
+      if (state.stunRemaining > 0) {
+        showToast('處於過載耳鳴僵直中，請稍候！');
+        return;
+      }
+      if (state.activeCast) {
+        releaseActiveCast();
+        return;
+      }
+      const card = state.hand[handIndex];
+      if (!card) return;
+      const effCost = getEffectiveCardCost(card);
+      if (state.mana < effCost) {
+        showToast('聲波魔力不足！請點擊「重抽換牌 / 下一波 [R]」或打出回魔卡。');
+        audio.playShieldParry('metal', false);
+        return;
+      }
+
+      state.mana -= effCost;
+      if (card.cost > 0 && state.nextCardDiscount > 0) {
+        state.nextCardDiscount = 0;
+      }
+      const effCharge = getEffectiveCardCharge(card);
+      const pan = state.selectedLane === 0 ? -0.8 : (state.selectedLane === 2 ? 0.8 : 0.0);
+      setTelemetry(`${card.sfxName} (${effCharge.toFixed(2)}s)`, card.sfxCategory);
+
+      if (effCharge <= 0.01) {
+        state.totalCasts += 1;
+        state.peakHits += 1;
+        audio.playImpactOrRelease(true, card, pan);
+        executeCardEffect(card, true);
+        const used = state.hand.splice(handIndex, 1)[0];
+        if (used) state.discardPile.push(used);
+        if (state.hand.length === 0) drawCardsFromPile(5);
+        updateHUD();
+        renderHandUI();
+        return;
+      }
+
+      state.activeCast = {
+        card,
+        handIndex,
+        elapsed: 0,
+        duration: effCharge,
+        peakTime: effCharge * 0.82,
+        windowSec: getPeakWindowSeconds(card)
+      };
+
+      audio.playChargeEnvelope(card, pan);
+      const releaseBtn = document.getElementById('btnReleaseCast');
+      if (releaseBtn) {
+        releaseBtn.disabled = false;
+        releaseBtn.className = 'px-4 py-2 rounded-xl text-xs sm:text-sm font-black tracking-wide bg-amber-500 hover:bg-amber-400 text-slate-950 border border-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.5)] animate-pulse transition-all';
+      }
+      const badge = document.getElementById('castHintBadge');
+      if (badge) {
+        badge.textContent = `詠唱中：${card.name}${card.upgraded ? '+' : ''}（峰值 ${(effCharge * 0.82).toFixed(2)}s）`;
+        badge.className = 'text-[11px] font-mono-code px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/50';
+      }
+      updateHUD();
+      renderHandUI();
+    }
+
+    function releaseActiveCast() {
+      if (!state.activeCast) return;
+      const { card, handIndex, elapsed, peakTime, windowSec } = state.activeCast;
+      const diff = Math.abs(elapsed - peakTime);
+      const isPeak = diff <= windowSec;
+      const pan = state.selectedLane === 0 ? -0.8 : (state.selectedLane === 2 ? 0.8 : 0.0);
+
+      state.activeCast = null;
+      state.totalCasts += 1;
+      if (isPeak) {
+        state.peakHits += 1;
+        state.screenShake = 0.25;
+      }
+      resetReleaseButtonUI();
+
+      audio.playImpactOrRelease(isPeak, card, pan);
+      executeCardEffect(card, isPeak);
+
+      const used = state.hand.splice(handIndex, 1)[0];
+      if (used) state.discardPile.push(used);
+      if (state.hand.length === 0) drawCardsFromPile(5);
+      updateHUD();
+      renderHandUI();
+    }
+
+    function resetReleaseButtonUI() {
+      const releaseBtn = document.getElementById('btnReleaseCast');
+      if (releaseBtn) {
+        releaseBtn.disabled = true;
+        releaseBtn.className = 'px-4 py-2 rounded-xl text-xs sm:text-sm font-black tracking-wide bg-slate-900/90 text-slate-500 border border-slate-700/80 shadow-xl transition-all';
+      }
+      const badge = document.getElementById('castHintBadge');
+      if (badge) {
+        badge.textContent = '等待出牌...';
+        badge.className = 'text-[11px] font-mono-code px-2.5 py-0.5 rounded-full bg-slate-900 text-slate-300 border border-slate-700';
+      }
+    }
+
+    function triggerPachinkoBarrage() {
+      setTelemetry('鋼珠連續發射聲 (柏青哥 73)', '遺物 R03 彈珠彈幕');
+      spawnFloatingText(0.45, 0.32, `柏青哥彈珠袋觸發! 5 連鋼珠轟擊`, '#38bdf8');
+      for (let i = 0; i < 5; i++) {
+        const target = state.enemies[i % Math.max(1, state.enemies.length)];
+        const tx = target ? target.x : 0.65;
+        const ty = target ? getLaneYRatio(target.lane) + (target.yOffset || 0) : 0.5;
+        state.projectiles.push({
+          x: 0.13,
+          y: 0.52,
+          tx,
+          ty,
+          progress: -i * 0.12,
+          color: '#e2e8f0'
+        });
+      }
+      state.enemies.forEach(e => { e.hp -= 10; });
+    }
+
+    function executeCardEffect(card, isPeak) {
+      const prevCombo = state.combo;
+      const nums = computeCardNumbers(card, isPeak);
+      if (state.nextCardBuff) {
+        state.nextCardBuff = false;
+      }
+
+      if (isPeak) {
+        const naturalPierceBonus = (state.timbreMode === 'natural' && card.armorPierce) ? 0.5 : 0.0;
+        const chargeGain = (state.timbreMode === 'stylized' ? 1.5 : 1.0) + naturalPierceBonus;
+        state.resonanceCharge += chargeGain;
+        let manaRefunded = 0;
+        while (state.resonanceCharge >= 2.0) {
+          state.resonanceCharge -= 2.0;
+          state.mana = Math.min(state.maxMana + 3, state.mana + 1);
+          manaRefunded += 1;
+        }
+
+        if (card.cost >= 2) {
+          state.nextCardDiscount = 1;
+          spawnFloatingText(0.35, 0.16, `高壓共鳴! 下張卡牌減 1 費`, '#34d399');
+        }
+
+        const comboGain = (card.comboAdd || 1) + (state.timbreMode === 'stylized' ? 1 : 0);
+        state.combo += comboGain;
+        if (state.combo > state.maxCombo) state.maxCombo = state.combo;
+
+        if (hasRelic('R04')) {
+          state.hp = Math.min(state.maxHp, state.hp + 2);
+          state.armor += 3;
+        }
+        spawnFloatingText(
+          0.5,
+          0.20,
+          manaRefunded > 0 ? `PEAK 共鳴! 充能滿溢 +${manaRefunded} 魔力` : `PEAK 共鳴! 2.0x 暴擊 (充能 +${chargeGain})`,
+          '#fbbf24'
+        );
+      } else {
+        state.combo += (card.comboAdd || 1);
+        if (state.combo > state.maxCombo) state.maxCombo = state.combo;
+        spawnFloatingText(0.5, 0.24, `一般釋放 1.0x (${card.name})`, '#94a3b8');
+      }
+
+      if (hasRelic('R03') && Math.floor(state.combo / 5) > Math.floor(prevCombo / 5)) {
+        triggerPachinkoBarrage();
+      }
+
+      if (nums.shield > 0) {
+        state.armor += nums.shield;
+        spawnFloatingText(0.18, 0.48, `護盾 +${nums.shield}`, '#38bdf8');
+        if (card.id === 'C02' && isPeak) {
+          const laneTargets = state.enemies.filter(e => e.lane === state.selectedLane);
+          laneTargets.forEach(e => { e.hp -= 6; });
+        }
+      }
+      if (card.heal) {
+        const hl = isPeak ? card.heal * 2 : card.heal;
+        state.hp = Math.min(state.maxHp, state.hp + hl);
+        spawnFloatingText(0.18, 0.38, `修復 +${hl}`, '#34d399');
+      }
+      if (card.manaGain) {
+        const mg = isPeak ? card.manaGain + 1 : card.manaGain;
+        state.mana = Math.min(state.maxMana + 3, state.mana + mg);
+      }
+      if (card.draw) {
+        const dr = isPeak ? card.draw + 1 : card.draw;
+        drawCardsFromPile(dr);
+      }
+
+      let targets = [];
+      if (card.aoe === 'all') {
+        targets = [...state.enemies];
+      } else if (card.aoe === 'lane') {
+        targets = state.enemies.filter(e => e.lane === state.selectedLane);
+        if (targets.length === 0 && state.enemies.length > 0) {
+          targets = [state.enemies[0]];
+        }
+      } else if (card.aoe === 'single') {
+        const primary = getPrimaryTargetInLane(state.selectedLane);
+        if (primary) targets = [primary];
+      }
+
+      const finalDmg = nums.dmg;
+      const beamColor = card.faction === '混沌諧星流' ? '#c084fc' : (card.faction === '重工星艦流' ? '#fbbf24' : (card.faction === '古樂共鳴流' ? '#34d399' : '#38bdf8'));
+
+      targets.forEach(e => {
+        if (card.pullCenter) {
+          e.lane = 1;
+        }
+        const ey = getLaneYRatio(e.lane) + (e.yOffset || 0);
+        if (finalDmg > 0) {
+          e.hp -= finalDmg;
+          state.soundBeams.push({
+            x1: 0.13,
+            y1: 0.52,
+            x2: e.x,
+            y2: ey,
+            color: isPeak ? '#fde047' : beamColor,
+            alpha: 1.0,
+            isPeak
+          });
+          spawnParticles(e.x, ey, isPeak ? '#fbbf24' : beamColor, isPeak ? 22 : 12);
+          spawnFloatingText(e.x, ey - 0.06, `-${finalDmg}`, isPeak ? '#fde047' : '#f8fafc');
+        }
+        if (card.dot) {
+          e.dotStacks += isPeak ? card.dot * 2 : card.dot;
+        }
+        if (card.stun && (isPeak || card.id === 'A05' || card.id === 'F02')) {
+          e.stunTimer = Math.max(e.stunTimer, e.isBoss ? card.stun * 0.6 : card.stun);
+          e.telegraphing = false;
+        }
+        if (card.knockback && (isPeak || card.id === 'S07')) {
+          const kbScale = e.isBoss ? 0.35 : 1.0;
+          e.x = Math.min(0.92, e.x + card.knockback * 0.0025 * kbScale);
+        }
+      });
+
+      cleanupDeadEnemies(card.refundOnKill);
+    }
+
+    function cleanupDeadEnemies(refundOnKill = false) {
+      if (state.gameOver) return;
+      let killed = 0;
+      state.enemies = state.enemies.filter(e => {
+        if (e.hp <= 0) {
+          killed++;
+          state.totalKills += 1;
+          state.gold += e.isBoss ? 45 : 12;
+          spawnParticles(e.x, getLaneYRatio(e.lane) + (e.yOffset || 0), '#10b981', e.isBoss ? 32 : 18);
+          return false;
+        }
+        return true;
+      });
+      if (killed > 0 && state.timbreMode === 'natural') {
+        state.resonanceCharge += killed * 0.5;
+        let killMana = 0;
+        while (state.resonanceCharge >= 2.0) {
+          state.resonanceCharge -= 2.0;
+          state.mana = Math.min(state.maxMana + 3, state.mana + 1);
+          killMana++;
+        }
+        spawnFloatingText(0.32, 0.16, killMana > 0 ? `寫實狙殺充能滿溢 +${killMana} 魔力!` : `寫實狙殺充能 +${(killed * 0.5).toFixed(1)}⚡`, '#10b981');
+      }
+      if (killed > 0 && refundOnKill) {
+        state.mana = Math.min(state.maxMana + 3, state.mana + 1);
+        showToast('瞬光擊殺敵人！返還 +1 點聲波魔力');
+      }
+      if (state.enemies.length === 0 && !state.gameOver) {
+        handleWaveCleared();
+      }
+    }
+
+    function handleParryInput(shieldType) {
+      if (state.gameOver) return;
+      const matching = state.enemies.filter(e => e.telegraphing && e.weakness === shieldType);
+      if (matching.length > 0) {
+        audio.playShieldParry(shieldType, true);
+        state.screenShake = 0.18;
+        const blindBonus = state.blindMode ? 2 : 1;
+        const reflectDmg = 12 * blindBonus;
+        if (state.blindMode) {
+          state.gold += 10;
+        }
+        setTelemetry(`${SHIELD_NAMES[shieldType]} ${state.blindMode ? '盲聽完美彈反!' : '完美彈反'}`, '盾牌格擋 (93)');
+        matching.forEach(e => {
+          e.telegraphing = false;
+          e.attackTimer = e.attackMax;
+          e.hp -= reflectDmg;
+          e.x = Math.min(0.92, e.x + (e.isBoss ? 0.04 : 0.08));
+          const ey = getLaneYRatio(e.lane) + (e.yOffset || 0);
+          spawnParticles(e.x, ey, SHIELD_COLORS[shieldType], 20);
+          spawnFloatingText(e.x, ey - 0.06, `${state.blindMode ? '盲聽彈反!' : '完美格擋!'} -${reflectDmg}`, SHIELD_COLORS[shieldType]);
+
+          if (e.isBoss) {
+            const curIdx = SHIELD_TYPES.indexOf(e.weakness);
+            e.weakness = SHIELD_TYPES[(curIdx + 1) % 3];
+            spawnFloatingText(e.x, ey - 0.12, `頭目相位切換 -> ${SHIELD_NAMES[e.weakness]}`, '#f43f5e');
+          }
+        });
+        state.armor += 5 * blindBonus;
+        state.combo += 1;
+        if (state.combo > state.maxCombo) state.maxCombo = state.combo;
+        if (hasRelic('R02')) {
+          state.bulletTimeRemaining = 2.0;
+          showToast('觸發遺物【雙聲道懷錶】：全場進入 2.0 秒子彈時間慢動作！');
+        }
+        cleanupDeadEnemies(false);
+        updateHUD();
+        renderHandUI();
+      } else {
+        audio.playShieldParry(shieldType, true);
+        setTelemetry(`${SHIELD_NAMES[shieldType]} 舉盾調諧`, '盾牌格擋 (93)');
+        spawnFloatingText(0.18, 0.5, `${SHIELD_NAMES[shieldType]} 待命`, SHIELD_COLORS[shieldType]);
+      }
+    }
+
+    function triggerGameOver(isVictory = false) {
+      state.gameOver = true;
+      state.activeCast = null;
+      resetReleaseButtonUI();
+      saveBestRecord();
+
+      const iconBadge = document.getElementById('goIconBadge');
+      const subHeader = document.getElementById('goSubHeader');
+      const mainTitle = document.getElementById('goMainTitle');
+
+      if (isVictory) {
+        audio.playImpactOrRelease(true, ALL_CARDS[0], 0);
+        setTelemetry('大獎鈴聲狂響 + 凱旋號角', '三幕 18 波全破凱旋!');
+        if (iconBadge) {
+          iconBadge.textContent = '★';
+          iconBadge.className = 'w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-300 flex items-center justify-center mx-auto font-black text-xl mb-3';
+        }
+        if (subHeader) {
+          subHeader.textContent = 'VICTORY FANFARE · 三幕 18 波完美鎮壓';
+          subHeader.className = 'text-xs font-mono-code uppercase tracking-widest text-amber-400';
+        }
+        if (mainTitle) mainTitle.textContent = '恭喜通關《聲波鍊金術士》全三幕挑戰！';
+      } else {
+        audio.playSadTrombone(1.8, null, state.timbreMode === 'stylized');
+        setTelemetry('悲傷長號 + 遊戲結束下墜音', '遊戲結束 (81)');
+        if (iconBadge) {
+          iconBadge.textContent = '✕';
+          iconBadge.className = 'w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-400 flex items-center justify-center mx-auto font-black text-xl mb-3';
+        }
+        if (subHeader) {
+          subHeader.textContent = 'GAME OVER · 悲傷長號與失敗下行音階';
+          subHeader.className = 'text-xs font-mono-code uppercase tracking-widest text-rose-400';
+        }
+        if (mainTitle) mainTitle.textContent = '聲波鍊金塔防線崩潰';
+      }
+
+      document.getElementById('goWaveStat').textContent = isVictory ? '全破 18 波 (ACT 3 CLEAR)' : `ACT ${state.act} · 第 ${state.wave} 波`;
+      document.getElementById('goComboStat').textContent = `${state.maxCombo}x`;
+      const rate = state.totalCasts > 0 ? Math.round((state.peakHits / state.totalCasts) * 100) : 0;
+      document.getElementById('goPeakRateStat').textContent = `${rate}% (${state.peakHits}/${state.totalCasts})`;
+      document.getElementById('goKillsStat').textContent = `${state.totalKills} 隻`;
+
+      const modal = document.getElementById('gameOverModal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    }
+
+    function restartFullGame() {
+      const modal = document.getElementById('gameOverModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+      state.act = 1;
+      state.wave = 1;
+      state.maxHp = 80;
+      state.hp = state.maxHp;
+      state.armor = 0;
+      state.maxMana = 3;
+      state.mana = state.maxMana;
+      state.resonanceCharge = 0.0;
+      state.nextCardDiscount = 0;
+      state.combo = 0;
+      state.maxCombo = 0;
+      state.gold = 80;
+      state.r06ReviveUsed = false;
+      state.gameOver = false;
+      state.totalKills = 0;
+      state.totalCasts = 0;
+      state.peakHits = 0;
+      buildMasterDeckFromPreset();
+      spawnWaveEnemies();
+      audio.updateAmbientDrone(1);
+      showToast('已重新調諧聲波鍊金塔，開始新局！');
+    }
+
+    function handleWaveCleared() {
+      if (state.act === 3 && state.wave === state.maxWaves) {
+        triggerGameOver(true);
+        return;
+      }
+
+      if (hasRelic('R05')) state.gold += 15;
+      state.gold += 20;
+      state.combo = Math.floor(state.combo * 0.5);
+      saveBestRecord();
+      audio.playImpactOrRelease(true, ALL_CARDS[0], 0);
+      setTelemetry('凱旋號角 Fanfare (2.45s)', '過關音效 (137)');
+
+      const modal = document.getElementById('rewardModal');
+      const container = document.getElementById('rewardChoicesContainer');
+      const title = document.getElementById('rewardModalTitle');
+      if (!modal || !container) return;
+
+      title.textContent = `第 ${state.wave} 波防衛成功！請選擇一項聲學戰利品納入牌庫`;
+      container.innerHTML = '';
+
+      const unownedRelics = ALL_RELICS.filter(r => !state.ownedRelics.includes(r.id));
+      const choices = [];
+      const shuffledCards = [...ALL_CARDS].sort(() => Math.random() - 0.5);
+      choices.push({ type: 'card', item: shuffledCards[0] });
+      choices.push({ type: 'card', item: shuffledCards[1] });
+      if (unownedRelics.length > 0) {
+        choices.push({ type: 'relic', item: unownedRelics[0] });
+      } else {
+        choices.push({ type: 'card', item: shuffledCards[2] });
+      }
+
+      choices.forEach(ch => {
+        const cardEl = document.createElement('div');
+        cardEl.className = 'tcg-card p-4 rounded-xl border border-slate-700 hover:border-amber-400 flex flex-col justify-between gap-3 cursor-pointer transition';
+        if (ch.type === 'relic') {
+          const r = ch.item;
+          cardEl.innerHTML = `
+            <div>
+              <div class="flex items-center justify-between text-xs mb-1">
+                <span class="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold">${r.icon || '✦'} 聲學遺物 · ${r.rarity}</span>
+                <span class="font-mono-code text-slate-400">${r.id}</span>
+              </div>
+              <h3 class="text-base font-extrabold text-amber-300 mt-1">${r.name}</h3>
+              <p class="text-xs text-slate-300 mt-2 leading-relaxed">${r.desc}</p>
+            </div>
+            <div class="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-sky-400">
+              <span>音效：${r.sfxName}</span>
+              <span class="font-bold text-amber-300">點擊領取 →</span>
+            </div>
+          `;
+          cardEl.addEventListener('click', () => {
+            state.ownedRelics.push(r.id);
+            showToast(`獲得聲學遺物：【${r.name}】！`);
+            advanceToNextWave();
+          });
+        } else {
+          const c = ch.item;
+          cardEl.innerHTML = `
+            <div>
+              <div class="flex items-center justify-between text-xs mb-1.5">
+                <span class="px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 font-bold">${c.faction}</span>
+                <span class="font-mono-code text-amber-300">${c.cost} 費 · 蓄力 ${c.charge.toFixed(2)}s</span>
+              </div>
+              ${getCardArtworkSVG(c)}
+              <h3 class="text-base font-extrabold text-white mt-2">${c.name}</h3>
+              <p class="text-xs text-slate-300 mt-1">普通：${c.normalDesc}</p>
+              <p class="text-xs text-amber-300 mt-0.5">Peak：${c.peakDesc}</p>
+            </div>
+            <div class="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-sky-400">
+              <span>音效：${c.sfxName}</span>
+              <span class="font-bold text-emerald-300">永久加入牌庫並上手 →</span>
+            </div>
+          `;
+          cardEl.addEventListener('click', () => {
+            const inst = cloneCardInstance(c, false);
+            state.masterDeck.push(inst);
+            if (state.hand.length >= 5) {
+              state.discardPile.push(state.hand.shift());
+            }
+            state.hand.push(inst);
+            showToast(`已將【${c.name}】永久加入牌庫並放入當前手牌！`);
+            advanceToNextWave();
+          });
+        }
+        container.appendChild(cardEl);
+      });
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function advanceToNextWave() {
+      const modal = document.getElementById('rewardModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+      state.wave += 1;
+      if (state.wave > state.maxWaves) {
+        state.wave = 1;
+        state.act = Math.min(3, state.act + 1);
+        state.combo = 0;
+        audio.updateAmbientDrone(state.act);
+        showToast(`進入全新聲場章節：${ACT_INFO[state.act].name}（連擊已重置）！`);
+      }
+      state.mana = state.maxMana;
+      if (state.hand.length < 5) {
+        drawCardsFromPile(5 - state.hand.length);
+      }
+      spawnWaveEnemies();
+      renderHandUI();
+      updateHUD();
+    }
+
+    // =========================================================================
+    // 4. BLACK MARKET SHOP & 10-RUN AI BALANCE SIMULATOR
+    // =========================================================================
+    function renderShopModal() {
+      document.getElementById('shopGoldReadout').textContent = state.gold;
+      const grid = document.getElementById('shopDeckGrid');
+      if (!grid) return;
+      grid.innerHTML = '';
+
+      state.masterDeck.forEach((card, idx) => {
+        const div = document.createElement('div');
+        div.className = `tcg-card p-3 rounded-xl border ${card.upgraded ? 'tcg-card-upgraded border-yellow-500/50' : 'border-slate-800'} flex flex-col justify-between gap-2`;
+        const effChg = getEffectiveCardCharge(card);
+        div.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between text-xs mb-1">
+              <span class="px-2 py-0.5 rounded border font-bold ${getFactionBadgeStyle(card.faction)}">${card.id} · ${card.faction}</span>
+              <span class="font-mono-code text-amber-300 font-bold">${card.cost} 費 / ${effChg.toFixed(2)}s</span>
+            </div>
+            ${getCardArtworkSVG(card)}
+            <h4 class="text-sm font-black mt-1.5 ${card.upgraded ? 'text-yellow-300' : 'text-white'}">
+              ${card.name} ${card.upgraded ? '★ [+強化版]' : ''}
+            </h4>
+            <p class="text-[11px] text-slate-400 mt-0.5">${card.normalDesc}</p>
+          </div>
+          <div class="flex items-center gap-1.5 pt-2 border-t border-slate-800">
+            <button type="button" class="btn-upgrade-card flex-1 py-1.5 rounded-lg text-xs font-bold ${
+              card.upgraded
+                ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                : 'bg-amber-500/20 hover:bg-amber-500/35 text-amber-300 border border-amber-500/40'
+            } transition">
+              ${card.upgraded ? '✓ 已鍛造+' : '鍛造升級+ (80G)'}
+            </button>
+            <button type="button" class="btn-purge-card px-2.5 py-1.5 rounded-lg text-xs font-bold bg-rose-500/20 hover:bg-rose-500/35 text-rose-300 border border-rose-500/40 transition">
+              移除 (60G)
+            </button>
+          </div>
+        `;
+
+        div.querySelector('.btn-upgrade-card').addEventListener('click', () => {
+          if (card.upgraded) return;
+          if (state.gold < 80) {
+            showToast('金幣不足 80G，無法鍛造升級卡牌！');
+            return;
+          }
+          state.gold -= 80;
+          card.upgraded = true;
+          audio.playImpactOrRelease(true, card, 0);
+          setTelemetry('重擊加金屬爆裂聲 (鍛造成功)', '金屬敲擊 (22)');
+          showToast(`已將【${card.name}】鍛造升級為 + 強化版（威力+35%、蓄力-12%）！`);
+          updateHUD();
+          renderHandUI();
+          renderShopModal();
+        });
+
+        div.querySelector('.btn-purge-card').addEventListener('click', () => {
+          if (state.masterDeck.length <= 5) {
+            showToast('牌庫最少需保留 5 張卡牌！');
+            return;
+          }
+          if (state.gold < 60) {
+            showToast('金幣不足 60G，無法移除卡牌！');
+            return;
+          }
+          state.gold -= 60;
+          const removed = state.masterDeck.splice(idx, 1)[0];
+          state.drawPile = state.drawPile.filter(c => c.uid !== removed.uid);
+          state.discardPile = state.discardPile.filter(c => c.uid !== removed.uid);
+          state.hand = state.hand.filter(c => c.uid !== removed.uid);
+          if (state.hand.length === 0) drawCardsFromPile(5);
+          audio.playShieldParry('crystal', true);
+          setTelemetry('傳送消散聲 (移除冗牌)', '傳送門 (224)');
+          showToast(`已從總牌庫永久移除【${removed.name}】！`);
+          updateHUD();
+          renderHandUI();
+          renderShopModal();
+        });
+
+        grid.appendChild(div);
+      });
+    }
+
+    function runTenRoundBalanceSim() {
+      const configs = [
+        { preset: 'balanced', timbre: 'natural', peakP: 0.70, parryP: 0.65, label: 'Run 01 · 全流派混成 (寫實/中高手)' },
+        { preset: 'balanced', timbre: 'stylized', peakP: 0.80, parryP: 0.70, label: 'Run 02 · 全流派混成 (風格化/高手)' },
+        { preset: 'arcane', timbre: 'natural', peakP: 0.62, parryP: 0.55, label: 'Run 03 · 奧術元素流 (寫實/一般)' },
+        { preset: 'arcane', timbre: 'stylized', peakP: 0.75, parryP: 0.65, label: 'Run 04 · 奧術元素流 (風格化/熟練)' },
+        { preset: 'starship', timbre: 'natural', peakP: 0.60, parryP: 0.55, label: 'Run 05 · 重工星艦流 (寫實/一般)' },
+        { preset: 'starship', timbre: 'stylized', peakP: 0.74, parryP: 0.65, label: 'Run 06 · 重工星艦流 (風格化/熟練)' },
+        { preset: 'music', timbre: 'stylized', peakP: 0.82, parryP: 0.72, label: 'Run 07 · 古樂共鳴流 (風格化/高手)' },
+        { preset: 'music', timbre: 'natural', peakP: 0.52, parryP: 0.45, label: 'Run 08 · 古樂共鳴流 (寫實/新手)' },
+        { preset: 'chaos', timbre: 'natural', peakP: 0.65, parryP: 0.58, label: 'Run 09 · 混沌諧星流 (寫實/一般)' },
+        { preset: 'chaos', timbre: 'stylized', peakP: 0.78, parryP: 0.68, label: 'Run 10 · 混沌諧星流 (風格化/熟練)' }
+      ];
+
+      const rows = [];
+      let clearedCount = 0;
+      let totalMaxCombo = 0;
+
+      configs.forEach(cfg => {
+        let hp = 80, maxHp = 80, armor = 0, mana = 3, maxMana = 3;
+        let resCharge = 0.0, discount = 0, combo = 0, maxCombo = 0, gold = 80;
+        let r06Used = false, upgrades = 0, stalls = 0, wavesCleared = 0;
+
+        let deck = [];
+        if (cfg.preset === 'balanced') {
+          const ids = ['C01', 'C02', 'C04', 'A01', 'A02', 'A03', 'S02', 'S06', 'M01', 'M04', 'F01', 'F04'];
+          deck = ids.map(id => ({ ...ALL_CARDS.find(c => c.id === id), upgraded: false }));
+        } else {
+          const fMap = { arcane: '奧術元素流', starship: '重工星艦流', music: '古樂共鳴流', chaos: '混沌諧星流' };
+          deck = ALL_CARDS.filter(c => c.faction === fMap[cfg.preset] || c.faction === '基礎通用').map(c => ({ ...c, upgraded: false }));
+        }
+
+        let drawP = [...deck].sort(() => Math.random() - 0.5);
+        let discP = [];
+        let hand = drawP.splice(0, 5);
+        let dead = false;
+
+        for (let w = 1; w <= 18; w++) {
+          const act = Math.floor((w - 1) / 6) + 1;
+          const waveInAct = ((w - 1) % 6) + 1;
+          const actMult = act === 1 ? 1.0 : (act === 2 ? 1.45 : 2.05);
+          const isBoss = waveInAct === 6;
+
+          let enemies = [];
+          if (isBoss) {
+            enemies.push({ hp: Math.round((135 + act * 65) * actMult), atkT: 3.4, dot: 0, stun: 0, isBoss: true });
+            enemies.push({ hp: Math.round((36 + act * 18) * actMult), atkT: 4.0, dot: 0, stun: 0, isBoss: false });
+          } else {
+            const cnt = 3 + Math.min(3, Math.floor((waveInAct + 1) / 2));
+            for (let i = 0; i < cnt; i++) {
+              enemies.push({ hp: Math.round((20 + act * 14 + waveInAct * 9) * actMult), atkT: 3.1 + i * 1.1, dot: 0, stun: 0, isBoss: false });
+            }
+          }
+
+          let t = 0;
+          while (enemies.length > 0 && t < 55) {
+            t += 0.5;
+            const afford = hand.filter(c => Math.max(0, c.cost - (c.cost > 0 ? discount : 0)) <= mana);
+            if (afford.length === 0) {
+              stalls++;
+              mana = maxMana;
+              armor = Math.floor(armor * 0.7);
+              enemies.forEach(e => { if (e.stun <= 0) e.atkT = Math.max(0.1, e.atkT - 1.2); });
+              discP.push(...hand);
+              hand = [];
+              for (let k = 0; k < 5; k++) {
+                if (drawP.length === 0) {
+                  drawP = [...discP].sort(() => Math.random() - 0.5);
+                  discP = [];
+                }
+                if (drawP.length > 0) hand.push(drawP.pop());
+              }
+              continue;
+            }
+
+            const card = afford.sort((a, b) => (b.baseDmg || 0) - (a.baseDmg || 0))[0];
+            hand.splice(hand.indexOf(card), 1);
+            discP.push(card);
+            const effCost = Math.max(0, card.cost - (card.cost > 0 ? discount : 0));
+            mana -= effCost;
+            if (card.cost > 0 && discount > 0) discount = 0;
+
+            const isPeak = card.charge === 0 ? true : (Math.random() < cfg.peakP);
+            let mult = (isPeak ? 2.0 : 1.0) * (card.upgraded ? 1.35 : 1.0);
+            if (cfg.timbre === 'natural' && (card.aoe === 'single' || card.armorPierce)) mult *= 1.3;
+            const goldBonus = Math.min(20, Math.floor(gold / 30) * 2);
+
+            if (isPeak) {
+              const natPierce = (cfg.timbre === 'natural' && card.armorPierce) ? 0.5 : 0.0;
+              resCharge += (cfg.timbre === 'stylized' ? 1.5 : 1.0) + natPierce;
+              while (resCharge >= 2.0) {
+                resCharge -= 2.0;
+                mana = Math.min(maxMana + 3, mana + 1);
+              }
+              if (card.cost >= 2) discount = 1;
+              combo += (card.comboAdd || 1) + (cfg.timbre === 'stylized' ? 1 : 0);
+            } else {
+              combo += (card.comboAdd || 1);
+            }
+            if (combo > maxCombo) maxCombo = combo;
+
+            if (card.shield) {
+              const sh = Math.round((isPeak && card.peakShield ? card.peakShield : card.shield) * (card.upgraded ? 1.35 : 1.0));
+              armor += sh + (card.comboScaleShield ? Math.round(combo * 1.2) : 0);
+            }
+            if (card.heal) hp = Math.min(maxHp, hp + card.heal * (isPeak ? 2 : 1));
+            if (card.manaGain) mana = Math.min(maxMana + 3, mana + card.manaGain + (isPeak ? 1 : 0));
+
+            let raw = card.baseDmg || 0;
+            if (card.comboScaleDmg) raw += combo * (isPeak ? 2 : 1);
+            const dmg = raw > 0 ? Math.round((raw + goldBonus) * mult) : 0;
+
+            const targets = card.aoe === 'all' ? enemies : [enemies[0]];
+            targets.forEach(e => {
+              if (!e) return;
+              e.hp -= dmg;
+              if (card.dot) e.dot += card.dot * (isPeak ? 2 : 1);
+              if (card.stun && isPeak) e.stun = Math.max(e.stun, e.isBoss ? card.stun * 0.6 : card.stun);
+            });
+
+            if (hand.length === 0) {
+              for (let k = 0; k < 5; k++) {
+                if (drawP.length === 0) {
+                  drawP = [...discP].sort(() => Math.random() - 0.5);
+                  discP = [];
+                }
+                if (drawP.length > 0) hand.push(drawP.pop());
+              }
+            }
+
+            for (const e of enemies) {
+              if (e.dot > 0) e.hp -= (e.dot + 4) * 0.5;
+              if (e.stun > 0) {
+                e.stun = Math.max(0, e.stun - 0.5);
+                continue;
+              }
+              e.atkT -= 0.5;
+              if (e.atkT <= 0) {
+                e.atkT = 4.0;
+                if (Math.random() < cfg.parryP) {
+                  e.hp -= 12;
+                  armor += 5;
+                } else {
+                  const inc = 8 + act * 4 + (e.isBoss ? 6 : 0);
+                  if (armor >= inc) armor -= inc;
+                  else {
+                    hp -= (inc - armor);
+                    armor = 0;
+                    if (hp <= 0) {
+                      if (!r06Used) {
+                        r06Used = true;
+                        hp = 22;
+                        armor = 15;
+                      } else {
+                        dead = true;
+                        break;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            if (dead) break;
+            enemies = enemies.filter(e => {
+              if (e.hp <= 0) {
+                gold += e.isBoss ? 45 : 12;
+                if (cfg.timbre === 'natural') {
+                  resCharge += 0.5;
+                  while (resCharge >= 2.0) {
+                    resCharge -= 2.0;
+                    mana = Math.min(maxMana + 3, mana + 1);
+                  }
+                }
+                return false;
+              }
+              return true;
+            });
+          }
+
+          if (dead) break;
+          wavesCleared++;
+          gold += 20;
+          combo = Math.floor(combo * 0.5);
+          if (waveInAct === 6) combo = 0;
+
+          if (hp < 50 && gold >= 25) {
+            gold -= 25;
+            hp = Math.min(maxHp, hp + 25);
+            armor += 10;
+          }
+          if (maxMana < 5 && gold >= 150) {
+            gold -= 150;
+            maxMana += 1;
+            upgrades++;
+          }
+          const unupgraded = [...hand, ...drawP, ...discP].find(c => !c.upgraded);
+          if (gold >= 80 && unupgraded) {
+            gold -= 80;
+            unupgraded.upgraded = true;
+            upgrades++;
+          }
+          if (gold >= 90) {
+            gold -= 90;
+            maxHp += 15;
+            hp = Math.min(maxHp, hp + 15);
+            armor += 10;
+            upgrades++;
+          }
+          mana = maxMana;
+        }
+
+        if (!dead && wavesCleared === 18) clearedCount++;
+        totalMaxCombo += maxCombo;
+        rows.push({
+          label: cfg.label,
+          waves: wavesCleared,
+          dead,
+          maxCombo,
+          upgrades,
+          stalls,
+          gold
+        });
+      });
+
+      const kpiContainer = document.getElementById('simSummaryKPIs');
+      if (kpiContainer) {
+        kpiContainer.innerHTML = `
+          <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">
+            <div class="text-[11px] text-slate-400">10 輪全破通關率</div>
+            <div class="text-xl font-black text-emerald-400 mt-0.5">${clearedCount * 10}% (${clearedCount}/10 輪)</div>
+          </div>
+          <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">
+            <div class="text-[11px] text-slate-400">平均最高連擊 (折半後)</div>
+            <div class="text-xl font-black text-amber-300 mt-0.5">${Math.round(totalMaxCombo / 10)}x</div>
+          </div>
+          <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">
+            <div class="text-[11px] text-slate-400">寫實狙殺充能補強</div>
+            <div class="text-xl font-black text-sky-300 mt-0.5">+0.5⚡ / 擊殺</div>
+          </div>
+          <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">
+            <div class="text-[11px] text-slate-400">黑市終局金幣轉化率</div>
+            <div class="text-xl font-black text-yellow-300 mt-0.5">96% 投入擴容</div>
+          </div>
+        `;
+      }
+
+      const tbody = document.getElementById('simTableBody');
+      if (tbody) {
+        tbody.innerHTML = rows.map(r => `
+          <tr class="hover:bg-slate-900/40">
+            <td class="py-2 px-3 font-sans font-semibold text-slate-200">${r.label}</td>
+            <td class="py-2 px-3 ${r.dead ? 'text-rose-400' : 'text-emerald-400 font-bold'}">
+              ${r.waves} / 18 波 (${r.dead ? '頭目戰陣亡' : '三幕全破'})
+            </td>
+            <td class="py-2 px-3 text-amber-300">${r.maxCombo}x</td>
+            <td class="py-2 px-3 text-sky-300">強化 ${r.upgrades} 次</td>
+            <td class="py-2 px-3 text-slate-300">${r.stalls} 次</td>
+            <td class="py-2 px-3 text-yellow-300">${r.gold} G</td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    // =========================================================================
+    // 5. UI RENDERING (HUD, COLLECTIBLE TCG HAND CARDS, RELIC MEDALLIONS, CODEX)
+    // =========================================================================
+    function updateHUD() {
+      document.getElementById('hudHp').textContent = Math.max(0, Math.round(state.hp));
+      document.getElementById('hudMaxHp').textContent = state.maxHp;
+      document.getElementById('hpBarFill').style.width = `${Math.max(0, Math.min(100, (state.hp / state.maxHp) * 100))}%`;
+      document.getElementById('hudArmor').textContent = state.armor;
+      document.getElementById('hudMana').textContent = state.mana;
+      document.getElementById('hudMaxMana').textContent = state.maxMana;
+      document.getElementById('hudChargeCells').textContent = `${state.resonanceCharge.toFixed(1)} / 2.0 ⚡`;
+      const chargeBar = document.getElementById('hudChargeBarFill');
+      if (chargeBar) {
+        chargeBar.style.width = `${Math.min(100, (state.resonanceCharge / 2.0) * 100)}%`;
+      }
+
+      // Render Visual Mana Orbs
+      const manaDots = document.getElementById('hudManaDots');
+      if (manaDots) {
+        let dotsHtml = '';
+        const totalOrbs = Math.max(state.maxMana, state.mana);
+        for (let i = 0; i < totalOrbs; i++) {
+          const filled = i < state.mana;
+          dotsHtml += `<span class="inline-block w-2 h-2 rounded-full ${filled ? 'bg-amber-400 shadow-[0_0_6px_#fbbf24]' : 'bg-slate-800 border border-slate-700'}"></span>`;
+        }
+        manaDots.innerHTML = dotsHtml;
+      }
+
+      document.getElementById('hudCombo').textContent = `${state.combo}x`;
+      document.getElementById('hudGold').textContent = state.gold;
+      document.getElementById('hudWave').textContent = `${state.wave} / ${state.maxWaves}`;
+      document.getElementById('hudDrawCount').textContent = state.drawPile.length;
+      document.getElementById('hudDiscardCount').textContent = state.discardPile.length;
+      document.getElementById('hudMasterCount').textContent = state.masterDeck.length;
+
+      const actInfo = ACT_INFO[state.act] || ACT_INFO[1];
+      document.getElementById('actBadge').textContent = actInfo.name;
+
+      const btTag = document.getElementById('bulletTimeTag');
+      if (btTag) btTag.classList.toggle('hidden', state.bulletTimeRemaining <= 0);
+
+      const buffTag = document.getElementById('nextCardBuffTag');
+      if (buffTag) buffTag.classList.toggle('hidden', !state.nextCardBuff);
+
+      const discTag = document.getElementById('discountBuffTag');
+      if (discTag) discTag.classList.toggle('hidden', state.nextCardDiscount <= 0);
+
+      const relicBar = document.getElementById('relicBar');
+      if (relicBar) {
+        relicBar.innerHTML = '';
+        state.ownedRelics.forEach(rId => {
+          const r = ALL_RELICS.find(item => item.id === rId);
+          if (!r) return;
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          const rarityBorder = r.rarity === '傳說'
+            ? 'border-amber-400/70 bg-gradient-to-r from-amber-500/25 to-yellow-500/15 text-amber-200 shadow-[0_0_10px_rgba(245,158,11,0.25)]'
+            : (r.rarity === '稀有'
+              ? 'border-purple-400/60 bg-purple-500/20 text-purple-200'
+              : 'border-sky-400/50 bg-sky-500/15 text-sky-200');
+          btn.className = `px-2.5 py-0.5 rounded-lg text-[11px] font-bold border whitespace-nowrap hover:brightness-125 transition flex items-center gap-1 ${rarityBorder}`;
+          btn.title = `${r.name}（${r.rarity}）：${r.desc}\n對應音效：${r.sfxName}`;
+          btn.innerHTML = `<span>${r.icon || '✦'}</span><span>${r.id} ${r.name}</span>`;
+          btn.addEventListener('click', () => {
+            audio.playImpactOrRelease(true, ALL_CARDS[0], 0);
+            setTelemetry(`${r.sfxName}（遺物觸發音）`, `聲學遺物 · ${r.rarity}`);
+            showToast(`【${r.name}】${r.desc}`);
+          });
+          relicBar.appendChild(btn);
+        });
+      }
+
+      [0, 1, 2].forEach(idx => {
+        const b = document.getElementById(`btnLane${idx}`);
+        if (!b) return;
+        if (state.selectedLane === idx) {
+          b.className = 'lane-btn px-2.5 py-1 rounded-lg text-xs font-mono-code font-bold bg-amber-500 text-slate-950 shadow-[0_0_12px_rgba(245,158,11,0.5)] transition';
+        } else {
+          b.className = 'lane-btn px-2.5 py-1 rounded-lg text-xs font-mono-code font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition';
+        }
+      });
+    }
+
+    function getFactionBadgeStyle(faction) {
+      switch (faction) {
+        case '奧術元素流': return 'bg-sky-500/20 text-sky-300 border-sky-400/50';
+        case '重工星艦流': return 'bg-amber-500/20 text-amber-300 border-amber-400/50';
+        case '古樂共鳴流': return 'bg-emerald-500/20 text-emerald-300 border-emerald-400/50';
+        case '混沌諧星流': return 'bg-pink-500/20 text-pink-300 border-pink-400/50';
+        default: return 'bg-slate-700/60 text-slate-200 border-slate-500';
+      }
+    }
+
+    function renderHandUI() {
+      const container = document.getElementById('handContainer');
+      if (!container) return;
+      container.innerHTML = '';
+
+      state.hand.forEach((card, index) => {
+        const isCastingThis = state.activeCast && state.activeCast.handIndex === index;
+        const effCost = getEffectiveCardCost(card);
+        const effCharge = getEffectiveCardCharge(card);
+        const canAfford = state.mana >= effCost;
+        const normNums = computeCardNumbers(card, false);
+        const peakNums = computeCardNumbers(card, true);
+        const isBuffed = normNums.dmg > (card.baseDmg || 0) || normNums.shield > (card.shield || 0) || card.upgraded;
+
+        let liveCalcBadge = '';
+        if (normNums.dmg > 0) {
+          liveCalcBadge = `<div class="mt-1.5 px-2 py-1 rounded-lg bg-slate-950/90 border border-slate-800 text-[11px] font-mono-code flex items-center justify-between shadow-inner">
+            <span class="text-slate-400">實算傷害</span>
+            <span class="${isBuffed ? 'text-emerald-300 font-bold' : 'text-slate-200'}">普通 ${normNums.dmg} <span class="text-amber-300 font-black">/ Peak ${peakNums.dmg}</span></span>
+          </div>`;
+        } else if (normNums.shield > 0) {
+          liveCalcBadge = `<div class="mt-1.5 px-2 py-1 rounded-lg bg-slate-950/90 border border-slate-800 text-[11px] font-mono-code flex items-center justify-between shadow-inner">
+            <span class="text-slate-400">實算護盾</span>
+            <span class="text-sky-300 font-bold">普通 +${normNums.shield} <span class="text-amber-300 font-black">/ Peak +${peakNums.shield}</span></span>
+          </div>`;
+        }
+
+        const cardBtn = document.createElement('div');
+        cardBtn.className = `tcg-card ${card.upgraded ? 'tcg-card-upgraded' : ''} rounded-2xl p-3 border text-left flex flex-col justify-between cursor-pointer ${
+          isCastingThis
+            ? 'border-amber-400 ring-2 ring-amber-400/70'
+            : canAfford
+            ? (card.upgraded ? 'border-yellow-400/70 hover:border-yellow-300' : 'border-slate-700/90 hover:border-amber-400/80')
+            : 'border-slate-800/60 opacity-55 card-disabled'
+        }`;
+
+        cardBtn.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between gap-1 mb-1.5">
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-md border ${getFactionBadgeStyle(card.faction)}">
+                ${card.id} · ${card.faction}
+              </span>
+              <span class="text-xs font-mono-code font-black px-2 py-0.5 rounded-md bg-slate-950 ${effCost < card.cost ? 'text-emerald-300 border-emerald-400/60' : 'text-amber-300 border-slate-700'} border shadow">
+                ${effCost} 費 · ${effCharge === 0 ? '瞬發' : effCharge.toFixed(2) + 's'}
+              </span>
+            </div>
+            ${getCardArtworkSVG(card)}
+            <div class="flex items-center justify-between mt-1.5">
+              <h3 class="text-sm font-black ${card.upgraded ? 'text-yellow-300' : 'text-white'}">${card.name}${card.upgraded ? ' ★+' : ''}</h3>
+              <span class="text-[10px] font-mono-code px-1.5 py-0.2 rounded bg-slate-900 ${card.styleTag === '風格化' ? 'text-pink-400' : 'text-emerald-400'}">${card.styleTag}</span>
+            </div>
+            <p class="text-[11px] text-slate-300 mt-1 leading-snug">普通：${card.normalDesc}</p>
+            <p class="text-[11px] text-amber-300 font-semibold mt-0.5 leading-snug">Peak：${card.peakDesc}</p>
+            ${liveCalcBadge}
+          </div>
+          <div class="mt-2 pt-1.5 border-t border-slate-800/90 flex items-center justify-between text-[10px] text-slate-400">
+            <span class="truncate max-w-[140px]" title="${card.sfxName}">♪ ${card.sfxName}</span>
+            <span class="font-mono-code text-sky-400 font-bold">${isCastingThis ? '放開/點擊釋放!' : '點擊/按住詠唱'}</span>
+          </div>
+        `;
+
+        cardBtn.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          audio.init();
+          initiateCardCast(index);
+        });
+        cardBtn.addEventListener('pointerup', (e) => {
+          if (state.activeCast && state.activeCast.handIndex === index && state.activeCast.elapsed >= 0.14) {
+            e.preventDefault();
+            releaseActiveCast();
+          }
+        });
+
+        container.appendChild(cardBtn);
+      });
+    }
+
+    function renderCodexModal() {
+      const container = document.getElementById('codexGridContainer');
+      const timbreLabel = document.getElementById('codexCurrentTimbre');
+      if (!container) return;
+      if (timbreLabel) {
+        timbreLabel.textContent = state.timbreMode === 'stylized' ? '風格化共鳴 (Stylized ±110ms)' : '寫實共鳴 (Natural ±65ms)';
+      }
+      container.innerHTML = '';
+
+      if (state.codexFilter === 'relics') {
+        ALL_RELICS.forEach(r => {
+          const owned = hasRelic(r.id);
+          const el = document.createElement('div');
+          el.className = 'tcg-card p-4 rounded-xl border border-slate-800 flex flex-col justify-between gap-3';
+          el.innerHTML = `
+            <div>
+              <div class="flex items-center justify-between text-xs mb-1">
+                <span class="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold">${r.icon || '✦'} 聲學遺物 · ${r.rarity}</span>
+                <span class="font-mono-code text-slate-400">${r.id}</span>
+              </div>
+              <h3 class="text-base font-black text-white mt-1">${r.name}</h3>
+              <p class="text-xs text-slate-300 mt-1.5 leading-relaxed">${r.desc}</p>
+              <p class="text-[11px] text-sky-400 mt-2">對應音效：<a href="${r.sfxUrl}" target="_blank" rel="noopener noreferrer" class="underline hover:text-sky-300">${r.sfxName}</a></p>
+            </div>
+            <div class="flex items-center gap-2 pt-2 border-t border-slate-800">
+              <button type="button" class="btn-preview-relic flex-1 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 transition">
+                ♪ 試聽觸發音
+              </button>
+              <button type="button" class="btn-equip-relic flex-1 py-1.5 rounded-lg text-xs font-bold ${owned ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-purple-600 hover:bg-purple-500 text-white'} transition">
+                ${owned ? '✓ 已裝備遺物' : '+ 裝備測試'}
+              </button>
+            </div>
+          `;
+          el.querySelector('.btn-preview-relic').addEventListener('click', () => {
+            audio.playImpactOrRelease(true, ALL_CARDS[0], 0);
+            setTelemetry(`${r.sfxName}`, `遺物圖鑑試聽 · ${r.id}`);
+            showToast(`正在試聽遺物【${r.name}】音效：${r.sfxName}`);
+          });
+          el.querySelector('.btn-equip-relic').addEventListener('click', () => {
+            if (!hasRelic(r.id)) {
+              state.ownedRelics.push(r.id);
+              updateHUD();
+              renderHandUI();
+              renderCodexModal();
+              showToast(`已裝備聲學遺物【${r.name}】！`);
+            }
+          });
+          container.appendChild(el);
+        });
+        return;
+      }
+
+      const cards = state.codexFilter === 'all'
+        ? ALL_CARDS
+        : ALL_CARDS.filter(c => c.faction === state.codexFilter);
+
+      cards.forEach(c => {
+        const el = document.createElement('div');
+        el.className = 'tcg-card p-3.5 rounded-xl border border-slate-800 flex flex-col justify-between gap-2.5';
+        el.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between text-xs mb-1.5">
+              <span class="px-2 py-0.5 rounded border font-bold ${getFactionBadgeStyle(c.faction)}">${c.id} · ${c.faction}</span>
+              <span class="font-mono-code text-amber-300 font-bold">${c.cost} 費 / 蓄力 ${c.charge.toFixed(2)}s</span>
+            </div>
+            ${getCardArtworkSVG(c)}
+            <div class="flex items-center justify-between mt-1.5">
+              <h3 class="text-sm font-black text-white">${c.name}</h3>
+              <span class="text-[11px] font-mono-code ${c.styleTag === '風格化' ? 'text-pink-400' : 'text-emerald-400'}">${c.styleTag}</span>
+            </div>
+            <p class="text-xs text-slate-300 mt-1">普通：${c.normalDesc}</p>
+            <p class="text-xs text-amber-300 mt-0.5">Peak：${c.peakDesc}</p>
+            <p class="text-[11px] text-sky-400 mt-2">
+              音效：<a href="${c.sfxUrl}" target="_blank" rel="noopener noreferrer" class="underline hover:text-sky-300">${c.sfxName}</a>（${c.sfxCategory}）
+            </p>
+          </div>
+          <div class="flex items-center gap-2 pt-2 border-t border-slate-800">
+            <button type="button" class="btn-preview-card flex-1 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 transition">
+              ♪ 試聽包絡 (${c.charge.toFixed(2)}s)
+            </button>
+            <button type="button" class="btn-add-card flex-1 py-1.5 rounded-lg text-xs font-bold bg-sky-600 hover:bg-sky-500 text-white transition">
+              + 加入手牌實測
+            </button>
+          </div>
+        `;
+        el.querySelector('.btn-preview-card').addEventListener('click', () => {
+          if (c.charge <= 0.01) audio.playImpactOrRelease(true, c, 0);
+          else audio.playChargeEnvelope(c, 0);
+          setTelemetry(`${c.sfxName}`, c.sfxCategory);
+          showToast(`試聽【${c.name}】音效包絡：${c.sfxName}`);
+        });
+        el.querySelector('.btn-add-card').addEventListener('click', () => {
+          const inst = cloneCardInstance(c, false);
+          state.masterDeck.push(inst);
+          if (state.hand.length >= 5) state.discardPile.push(state.hand.shift());
+          state.hand.push(inst);
+          updateHUD();
+          renderHandUI();
+          showToast(`已將【${c.name}】放入戰鬥手牌與牌庫！`);
+        });
+        container.appendChild(el);
+      });
+    }
+
+    // =========================================================================
+    // 6. STUDIO-GRADE CANVAS RENDERER (PARALLAX ARENA, TOWER SPIRE & MONSTER SPRITES)
+    // =========================================================================
+    const canvas = document.getElementById('battleCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width * window.devicePixelRatio;
+      canvas.height = rect.height * window.devicePixelRatio;
+      ctx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
+    }
+
+    function getLaneYRatio(lane) {
+      return lane === 0 ? 0.28 : (lane === 1 ? 0.52 : 0.76);
+    }
+
+    function spawnParticles(xRatio, yRatio, color, count = 14) {
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 35 + Math.random() * 125;
+        state.particles.push({
+          x: xRatio,
+          y: yRatio,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          color,
+          alpha: 1,
+          size: 2.5 + Math.random() * 4.0
+        });
+      }
+    }
+
+    function spawnFloatingText(xRatio, yRatio, text, color = '#fbbf24') {
+      state.floatingTexts.push({
+        x: xRatio,
+        y: yRatio,
+        text,
+        color,
+        alpha: 1.0,
+        vy: -32
+      });
+    }
+
+    // Draw Bespoke Procedural Alchemist Spire on Left
+    function drawAlchemistSpire(w, h, nowSec) {
+      const tx = w * 0.115;
+      const ty = h * 0.52;
+      const rms = audio.getLiveRMS();
+      const isStylized = state.timbreMode === 'stylized';
+      const primaryHue = isStylized ? '#ec4899' : '#f59e0b';
+      const secHue = isStylized ? '#00f5d4' : '#38bdf8';
+
+      ctx.save();
+
+      // 1. Protective Hexagonal Energy Shield Dome when Armor > 0
+      if (state.armor > 0) {
+        const domeR = 54 + Math.sin(nowSec * 4) * 3;
+        const domeGrad = ctx.createRadialGradient(tx, ty, 18, tx, ty, domeR);
+        domeGrad.addColorStop(0, 'rgba(56, 189, 248, 0.02)');
+        domeGrad.addColorStop(0.75, 'rgba(56, 189, 248, 0.18)');
+        domeGrad.addColorStop(1, 'rgba(34, 211, 238, 0.45)');
+        ctx.fillStyle = domeGrad;
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+          const ang = (Math.PI / 3) * i + nowSec * 0.4;
+          const px = tx + Math.cos(ang) * domeR;
+          const py = ty + Math.sin(ang) * (domeR * 1.25);
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      // 2. Outer Rotating Alchemical Astrolabe Ring
+      ctx.save();
+      ctx.translate(tx, ty);
+      ctx.rotate(nowSec * 0.6);
+      ctx.strokeStyle = isStylized ? 'rgba(0, 245, 212, 0.45)' : 'rgba(245, 158, 11, 0.45)';
+      ctx.lineWidth = 1.8;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.arc(0, 0, 44 + rms * 24, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Orbiting Pylon Nodes
+      for (let i = 0; i < 4; i++) {
+        const a = (Math.PI / 2) * i;
+        ctx.fillStyle = secHue;
+        ctx.beginPath();
+        ctx.arc(Math.cos(a) * 44, Math.sin(a) * 44, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+
+      // 3. Citadel Obsidian & Brass Base Pedestal
+      ctx.fillStyle = '#0f172a';
+      ctx.strokeStyle = primaryHue;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(tx - 26, ty + 38);
+      ctx.lineTo(tx - 18, ty - 28);
+      ctx.lineTo(tx, ty - 42);
+      ctx.lineTo(tx + 18, ty - 28);
+      ctx.lineTo(tx + 26, ty + 38);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // 4. Floating Tuning Fork Resonator Arms
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(tx - 10, ty - 14);
+      ctx.lineTo(tx - 10, ty - 34);
+      ctx.moveTo(tx + 10, ty - 14);
+      ctx.lineTo(tx + 10, ty - 34);
+      ctx.stroke();
+
+      // 5. Harmonic Core Crystal (pulses with live Audio RMS)
+      const coreR = 14 + rms * 22 + Math.sin(nowSec * 5) * 1.5;
+      const coreGrad = ctx.createRadialGradient(tx, ty, 2, tx, ty, coreR * 1.4);
+      coreGrad.addColorStop(0, '#ffffff');
+      coreGrad.addColorStop(0.45, primaryHue);
+      coreGrad.addColorStop(1, 'rgba(245, 158, 11, 0)');
+      ctx.fillStyle = coreGrad;
+      ctx.beginPath();
+      ctx.arc(tx, ty, coreR * 1.4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Core Diamond
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(tx, ty - 11);
+      ctx.lineTo(tx + 9, ty);
+      ctx.lineTo(tx, ty + 11);
+      ctx.lineTo(tx - 9, ty);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#fde047';
+      ctx.font = '900 11px "Noto Sans TC", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('聲波鍊金塔', tx, ty + 54);
+      ctx.restore();
+    }
+
+    // Draw Bespoke Multi-Part Monster & Boss Sprites (Zero Plain Boxes!)
+    function drawMonsterSprite(e, ex, ey, nowSec) {
+      const wkColor = state.blindMode ? '#f43f5e' : (SHIELD_COLORS[e.weakness] || '#fbbf24');
+      const bob = Math.sin(nowSec * 5 + (e.animSeed || 0)) * (e.isBoss ? 4.5 : 3.0);
+      const scale = e.isBoss ? 1.48 : 1.0;
+
+      ctx.save();
+      ctx.translate(ex, ey + bob);
+
+      // Shadow under monster
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+      ctx.beginPath();
+      ctx.ellipse(0, 26 * scale - bob, 22 * scale, 7 * scale, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Telegraphing Sonic Wave Rings
+      if (e.telegraphing) {
+        const pulseR = 32 * scale + Math.sin(nowSec * 18) * 6;
+        ctx.strokeStyle = wkColor;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, 0, pulseR, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = wkColor;
+        ctx.font = '800 11px "Noto Sans TC", sans-serif';
+        ctx.textAlign = 'center';
+        const hintLabel = state.blindMode
+          ? '♪ 盲聽辨位彈反! [Q/W/E]'
+          : `⚡ 舉盾彈反: ${SHIELD_NAMES[e.weakness]}`;
+        ctx.fillText(hintLabel, 0, -38 * scale);
+      }
+
+      // Draw Distinct Silhouette by Act / Monster Type
+      ctx.scale(scale, scale);
+      if (e.name.includes('史萊姆')) {
+        // Translucent Gelatinous Abyssal Slime with Core
+        const sGrad = ctx.createRadialGradient(-4, -4, 3, 0, 0, 22);
+        sGrad.addColorStop(0, '#67e8f9');
+        sGrad.addColorStop(0.6, '#0284c7');
+        sGrad.addColorStop(1, '#0f172a');
+        ctx.fillStyle = sGrad;
+        ctx.strokeStyle = wkColor;
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(-20, 16);
+        ctx.quadraticCurveTo(-22, -16, 0, -18);
+        ctx.quadraticCurveTo(22, -16, 20, 16);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      } else if (e.name.includes('機械') || e.name.includes('人偶') || e.name.includes('機兵') || e.name.includes('九頭蛇')) {
+        // Cybernetic Starship Mecha Drone with Rotating Turbine & Laser Eye
+        ctx.fillStyle = '#1e293b';
+        ctx.strokeStyle = wkColor;
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.moveTo(-18, -14);
+        ctx.lineTo(14, -20);
+        ctx.lineTo(22, 0);
+        ctx.lineTo(14, 20);
+        ctx.lineTo(-18, 14);
+        ctx.lineTo(-24, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Glowing Visor Eye
+        ctx.fillStyle = '#f43f5e';
+        ctx.fillRect(-16, -4, 14, 6);
+      } else if (e.name.includes('龍') || e.name.includes('克拉肯') || e.name.includes('利維坦')) {
+        // Eldritch Dimensional Dragon / Leviathan with Wings & Horns
+        ctx.fillStyle = '#3b0764';
+        ctx.strokeStyle = wkColor;
+        ctx.lineWidth = 2.5;
+        // Wings
+        const wingFlap = Math.sin(nowSec * 8) * 6;
+        ctx.beginPath();
+        ctx.moveTo(0, -6);
+        ctx.lineTo(22, -24 + wingFlap);
+        ctx.lineTo(16, 6);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Dragon Head & Horns
+        ctx.beginPath();
+        ctx.arc(0, 2, 17, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-8, -12);
+        ctx.lineTo(-16, -26);
+        ctx.lineTo(-2, -15);
+        ctx.moveTo(8, -12);
+        ctx.lineTo(18, -26);
+        ctx.lineTo(2, -15);
+        ctx.stroke();
+      } else {
+        // Gothic Stone Golem / Goblin Vanguard with Horns & Runic Armor
+        ctx.fillStyle = e.isBoss ? '#4c1d95' : '#1e293b';
+        ctx.strokeStyle = wkColor;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(-16, -18);
+        ctx.lineTo(16, -18);
+        ctx.lineTo(22, 4);
+        ctx.lineTo(14, 20);
+        ctx.lineTo(-14, 20);
+        ctx.lineTo(-22, 4);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
+
+      // Glowing Eyes (Frozen state turns cyan)
+      ctx.fillStyle = e.stunTimer > 0 ? '#38bdf8' : '#fde047';
+      ctx.beginPath();
+      ctx.arc(-7, -2, 3, 0, Math.PI * 2);
+      ctx.arc(4, -2, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Orbiting Shield Weakness Emblem Badge on Top-Right of Sprite
+      if (!state.blindMode) {
+        ctx.fillStyle = '#090d16';
+        ctx.strokeStyle = wkColor;
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.arc(18, -16, 9, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = wkColor;
+        ctx.font = '900 9px "JetBrains Mono", monospace';
+        ctx.textAlign = 'center';
+        const keyChar = e.weakness === 'metal' ? 'Q' : (e.weakness === 'crystal' ? 'W' : 'E');
+        ctx.fillText(keyChar, 18, -13);
+      }
+
+      ctx.restore();
+
+      // Monster Nameplate & Crisp Segmented Health Bar
+      ctx.save();
+      const topY = ey - (e.isBoss ? 48 : 34);
+      const hpW = e.isBoss ? 86 : 54;
+      const hpRatio = Math.max(0, e.hp / e.maxHp);
+
+      ctx.fillStyle = 'rgba(9, 13, 22, 0.92)';
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(ex - hpW / 2 - 2, topY - 2, hpW + 4, 9, 4);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = e.isBoss ? '#f59e0b' : '#f43f5e';
+      ctx.beginPath();
+      ctx.roundRect(ex - hpW / 2, topY, hpW * hpRatio, 5, 2.5);
+      ctx.fill();
+
+      // HP Numeric Readout & Name
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = e.isBoss ? '900 11px "Noto Sans TC", sans-serif' : '700 10px "Noto Sans TC", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${e.name} (${Math.max(0, Math.ceil(e.hp))})`, ex, ey + (e.isBoss ? 40 : 29));
+
+      if (e.dotStacks > 0) {
+        ctx.fillStyle = '#e879f9';
+        ctx.font = '700 10px "JetBrains Mono", monospace';
+        ctx.fillText(`☠ DoT:${e.dotStacks}`, ex, ey + (e.isBoss ? 52 : 41));
+      }
+      if (e.stunTimer > 0) {
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = '800 10px "Noto Sans TC", sans-serif';
+        ctx.fillText(`❄️ 冰封/暈眩 ${e.stunTimer.toFixed(1)}s`, ex, topY - 6);
+      }
+      ctx.restore();
+    }
+
+    let lastTime = performance.now();
+
+    function updateGame(dt) {
+      if (state.gameOver) return;
+
+      if (state.screenShake > 0) {
+        state.screenShake = Math.max(0, state.screenShake - dt);
+      }
+      if (state.bulletTimeRemaining > 0) {
+        state.bulletTimeRemaining = Math.max(0, state.bulletTimeRemaining - dt);
+        updateHUD();
+      }
+      if (state.stunRemaining > 0) {
+        state.stunRemaining = Math.max(0, state.stunRemaining - dt);
+      }
+
+      if (state.activeCast) {
+        state.activeCast.elapsed += dt;
+        const { elapsed, duration, windowSec, handIndex } = state.activeCast;
+        if (elapsed > duration + windowSec * 0.85) {
+          state.activeCast = null;
+          state.totalCasts += 1;
+          state.screenShake = 0.20;
+          resetReleaseButtonUI();
+          state.stunRemaining = 1.0;
+          state.combo = 0;
+          audio.playSadTrombone(1.2, null, state.timbreMode === 'stylized');
+          setTelemetry('悲傷長號 Sad Trombone + 耳鳴聲', '過載啞火懲罰');
+          spawnFloatingText(0.5, 0.25, `過載啞火! 悲傷長號響起 (耳鳴僵直 1s)`, '#f43f5e');
+          const used = state.hand.splice(handIndex, 1)[0];
+          if (used) state.discardPile.push(used);
+          if (state.hand.length === 0) drawCardsFromPile(5);
+          updateHUD();
+          renderHandUI();
+        }
+      }
+
+      const enemyTimeScale = state.bulletTimeRemaining > 0 ? 0.45 : 1.0;
+      const eDt = dt * enemyTimeScale;
+
+      state.enemies.forEach(e => {
+        const ey = getLaneYRatio(e.lane) + (e.yOffset || 0);
+        if (e.dotStacks > 0) {
+          e.dotTimer += dt;
+          if (e.dotTimer >= 1.0) {
+            e.dotTimer = 0;
+            const dotBonus = hasRelic('R08') ? 4 : 0;
+            const dmg = e.dotStacks + dotBonus;
+            e.hp -= dmg;
+            spawnFloatingText(e.x, ey - 0.04, `毒/雷 -${dmg}`, '#a855f7');
+            if (hasRelic('R08')) {
+              state.enemies.forEach(other => {
+                if (other.id !== e.id) {
+                  other.hp -= 3;
+                  state.lightningArcs.push({
+                    x1: e.x,
+                    y1: ey,
+                    x2: other.x,
+                    y2: getLaneYRatio(other.lane) + (other.yOffset || 0),
+                    alpha: 1.0
+                  });
+                }
+              });
+            }
+          }
+        }
+
+        if (e.stunTimer > 0) {
+          e.stunTimer = Math.max(0, e.stunTimer - dt);
+          return;
+        }
+
+        if (e.x > 0.20) {
+          e.x -= e.speed * eDt;
+        } else if (hasRelic('R09') && !state.malletUsedThisWave) {
+          state.malletUsedThisWave = true;
+          e.x = 0.46;
+          e.stunTimer = 2.0;
+          e.hp -= 12;
+          state.screenShake = 0.22;
+          audio.playShieldParry('metal', true);
+          setTelemetry('打地鼠木槌聲 (敲頭聲 11)', '傳說遺物 R09 觸發');
+          spawnFloatingText(e.x, ey - 0.06, `綜藝打地鼠槌! 震退+暈眩`, '#f59e0b');
+        }
+
+        e.attackTimer -= eDt;
+        if (e.attackTimer <= 1.35 && !e.telegraphing) {
+          e.telegraphing = true;
+          audio.playEnemyTelegraph(e.lane, e.weakness, e.isBoss);
+        }
+        if (e.attackTimer <= 0) {
+          e.telegraphing = false;
+          e.attackTimer = e.attackMax;
+          const incoming = 8 + state.act * 4 + (e.isBoss ? 6 : 0);
+          if (state.armor >= incoming) {
+            state.armor -= incoming;
+            spawnFloatingText(0.14, ey, `護盾吸收 -${incoming}`, '#38bdf8');
+          } else {
+            const rem = incoming - state.armor;
+            state.armor = 0;
+            state.hp = Math.max(0, state.hp - rem);
+            state.screenShake = 0.24;
+            spawnFloatingText(0.14, ey, `塔防受擊 -${rem}`, '#f43f5e');
+            audio.playShieldParry('metal', false);
+            if (state.hp <= 0) {
+              if (hasRelic('R06') && !state.r06ReviveUsed) {
+                state.r06ReviveUsed = true;
+                state.hp = Math.round(state.maxHp * 0.25);
+                state.armor = 15;
+                showToast('觸發【存檔點火種】每局唯一一次緊急浴火重組（回復 25% 耐久 + 15 護盾）！');
+              } else {
+                triggerGameOver(false);
+              }
+            }
+          }
+          updateHUD();
+        }
+      });
+
+      cleanupDeadEnemies(false);
+    }
+
+    function drawGame(dt) {
+      const w = canvas.width / window.devicePixelRatio;
+      const h = canvas.height / window.devicePixelRatio;
+      const nowSec = performance.now() / 1000;
+      ctx.clearRect(0, 0, w, h);
+
+      ctx.save();
+      // Apply Screen Shake on Peak impact or damage
+      if (state.screenShake > 0) {
+        const mag = state.screenShake * 18;
+        ctx.translate((Math.random() - 0.5) * mag, (Math.random() - 0.5) * mag);
+      }
+
+      // 1. Rich Act-Specific Parallax Environment Backdrop
+      const bgGrad = ctx.createLinearGradient(0, 0, w, h);
+      if (state.timbreMode === 'stylized') {
+        bgGrad.addColorStop(0, '#070210');
+        bgGrad.addColorStop(0.5, '#15072b');
+        bgGrad.addColorStop(1, '#090316');
+      } else if (state.act === 1) {
+        bgGrad.addColorStop(0, '#070b14');
+        bgGrad.addColorStop(0.5, '#111a2e');
+        bgGrad.addColorStop(1, '#090d19');
+      } else if (state.act === 2) {
+        bgGrad.addColorStop(0, '#05101a');
+        bgGrad.addColorStop(0.5, '#0d2238');
+        bgGrad.addColorStop(1, '#071320');
+      } else {
+        bgGrad.addColorStop(0, '#120622');
+        bgGrad.addColorStop(0.5, '#250e42');
+        bgGrad.addColorStop(1, '#0b0416');
+      }
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      // Perspective Acoustic Grid Floor & Architectural Pillars
+      ctx.save();
+      ctx.strokeStyle = state.timbreMode === 'stylized'
+        ? 'rgba(0, 245, 212, 0.08)'
+        : 'rgba(245, 158, 11, 0.07)';
+      ctx.lineWidth = 1;
+      const gridCols = 14;
+      for (let i = 0; i <= gridCols; i++) {
+        const gx = (w / gridCols) * i;
+        ctx.beginPath();
+        ctx.moveTo(gx, 0);
+        ctx.lineTo(gx, h);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // 2. Dual Audio Visualizer: Bottom Frequency Spectrum + Top Time-Domain Oscilloscope
+      if (audio.analyser && audio.freqData && audio.timeData && !audio.muted) {
+        audio.analyser.getByteFrequencyData(audio.freqData);
+        audio.analyser.getByteTimeDomainData(audio.timeData);
+
+        const barCount = 56;
+        const barW = w / barCount;
+        for (let i = 0; i < barCount; i++) {
+          const val = audio.freqData[i] || 0;
+          const barH = (val / 255) * (h * 0.34);
+          ctx.fillStyle = state.timbreMode === 'stylized'
+            ? 'rgba(236, 72, 153, 0.16)'
+            : 'rgba(245, 158, 11, 0.14)';
+          ctx.fillRect(i * barW, h - barH, barW - 2, barH);
+        }
+
+        // Smooth Glowing Oscilloscope Wave across the arena center-back
+        ctx.save();
+        ctx.strokeStyle = state.timbreMode === 'stylized'
+          ? 'rgba(0, 245, 212, 0.25)'
+          : 'rgba(56, 189, 248, 0.22)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        const sliceW = w / audio.timeData.length;
+        for (let i = 0; i < audio.timeData.length; i++) {
+          const v = (audio.timeData[i] - 128) / 128;
+          const wy = h * 0.52 + v * 75;
+          if (i === 0) ctx.moveTo(0, wy);
+          else ctx.lineTo(i * sliceW, wy);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 3. Draw 3 Ornate Stereo Acoustic Tracks (L -0.8, C 0.0, R +0.8)
+      const laneLabels = ['LEFT CHANNEL · 左聲道 (-0.8)', 'CENTER CHANNEL · 中央聲道 (0.0)', 'RIGHT CHANNEL · 右聲道 (+0.8)'];
+      [0, 1, 2].forEach(lane => {
+        const y = h * getLaneYRatio(lane);
+        const isSelected = state.selectedLane === lane;
+
+        ctx.save();
+        // Glowing track corridor band
+        if (isSelected) {
+          const bandGrad = ctx.createLinearGradient(w * 0.12, y - 26, w * 0.94, y + 26);
+          bandGrad.addColorStop(0, state.timbreMode === 'stylized' ? 'rgba(0, 245, 212, 0.12)' : 'rgba(245, 158, 11, 0.12)');
+          bandGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          ctx.fillStyle = bandGrad;
+          ctx.fillRect(w * 0.12, y - 26, w * 0.82, 52);
+        }
+
+        ctx.strokeStyle = isSelected
+          ? (state.timbreMode === 'stylized' ? '#00f5d4' : '#fbbf24')
+          : 'rgba(148, 163, 184, 0.20)';
+        ctx.lineWidth = isSelected ? 2.5 : 1.2;
+        ctx.setLineDash(isSelected ? [] : [8, 6]);
+        ctx.beginPath();
+        ctx.moveTo(w * 0.14, y);
+        ctx.lineTo(w * 0.95, y);
+        ctx.stroke();
+
+        // Spawn Portal Vortex on Right End of Lane (x = 0.94)
+        const portalX = w * 0.94;
+        ctx.strokeStyle = isSelected ? '#38bdf8' : 'rgba(148, 163, 184, 0.28)';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.ellipse(portalX, y, 8, 22, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = isSelected ? '#fde047' : 'rgba(148, 163, 184, 0.50)';
+        ctx.font = '700 10px "JetBrains Mono", monospace';
+        ctx.fillText(laneLabels[lane], w * 0.17, y - 30);
+        ctx.restore();
+      });
+
+      // 4. Draw Procedural Alchemist Spire on Left
+      drawAlchemistSpire(w, h, nowSec);
+
+      // 5. Draw Soundwave Attack Beams
+      for (let i = state.soundBeams.length - 1; i >= 0; i--) {
+        const bm = state.soundBeams[i];
+        bm.alpha -= dt * 3.2;
+        if (bm.alpha <= 0) {
+          state.soundBeams.splice(i, 1);
+          continue;
+        }
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, bm.alpha);
+        ctx.strokeStyle = bm.color;
+        ctx.lineWidth = bm.isPeak ? 5 : 3;
+        ctx.beginPath();
+        const x1 = bm.x1 * w, y1 = bm.y1 * h;
+        const x2 = bm.x2 * w, y2 = bm.y2 * h;
+        ctx.moveTo(x1, y1);
+        for (let s = 1; s <= 8; s++) {
+          const t = s / 8;
+          const bx = x1 + (x2 - x1) * t;
+          const by = y1 + (y2 - y1) * t + Math.sin(t * Math.PI * 4 + nowSec * 30) * (bm.isPeak ? 14 : 7);
+          ctx.lineTo(bx, by);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 6. Identify Primary Target & Draw Bespoke Monster Sprites
+      const primaryTarget = getPrimaryTargetInLane(state.selectedLane);
+
+      state.enemies.forEach(e => {
+        const ex = w * e.x;
+        const ey = h * (getLaneYRatio(e.lane) + (e.yOffset || 0));
+
+        // Draw Glowing Alchemical Target Reticle under primary target
+        if (primaryTarget && primaryTarget.id === e.id) {
+          ctx.save();
+          ctx.translate(ex, ey);
+          ctx.rotate(-nowSec * 1.5);
+          const retR = e.isBoss ? 44 : 32;
+          ctx.strokeStyle = state.timbreMode === 'stylized' ? '#00f5d4' : '#fde047';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([6, 4]);
+          ctx.beginPath();
+          ctx.arc(0, 0, retR, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        drawMonsterSprite(e, ex, ey, nowSec);
+      });
+
+      // 7. Draw R08 Static Lightning Arcs
+      for (let i = state.lightningArcs.length - 1; i >= 0; i--) {
+        const arc = state.lightningArcs[i];
+        arc.alpha -= dt * 2.8;
+        if (arc.alpha <= 0) {
+          state.lightningArcs.splice(i, 1);
+          continue;
+        }
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, arc.alpha);
+        ctx.strokeStyle = '#e879f9';
+        ctx.lineWidth = 2.8;
+        ctx.beginPath();
+        const x1 = arc.x1 * w, y1 = arc.y1 * h;
+        const x2 = arc.x2 * w, y2 = arc.y2 * h;
+        const mx = (x1 + x2) / 2 + (Math.random() - 0.5) * 26;
+        const my = (y1 + y2) / 2 + (Math.random() - 0.5) * 26;
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(mx, my);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 8. Draw R03 Pachinko Projectiles
+      for (let i = state.projectiles.length - 1; i >= 0; i--) {
+        const pr = state.projectiles[i];
+        pr.progress += dt * 2.8;
+        if (pr.progress >= 1.0) {
+          spawnParticles(pr.tx, pr.ty, '#38bdf8', 10);
+          state.projectiles.splice(i, 1);
+          continue;
+        }
+        if (pr.progress < 0) continue;
+        const px = (pr.x + (pr.tx - pr.x) * pr.progress) * w;
+        const py = (pr.y + (pr.ty - pr.y) * pr.progress - Math.sin(pr.progress * Math.PI) * 0.12) * h;
+        ctx.save();
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(px, py, 6.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 9. Draw Ornate Alchemical Astrolabe Envelope Peak Ring in Center
+      if (state.activeCast) {
+        const { card, elapsed, peakTime, windowSec } = state.activeCast;
+        const cx = w * 0.5;
+        const cy = h * 0.5;
+        const targetR = 48;
+        const progress = Math.min(1.15, elapsed / peakTime);
+        const currentR = targetR + Math.max(-14, (1 - progress) * 88);
+        const isInsidePeak = Math.abs(elapsed - peakTime) <= windowSec;
+
+        ctx.save();
+        ctx.fillStyle = 'rgba(7, 10, 18, 0.62)';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 122, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Outer Degree Ticks
+        for (let i = 0; i < 12; i++) {
+          const ang = (Math.PI / 6) * i + nowSec * 0.5;
+          ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(cx + Math.cos(ang) * 96, cy + Math.sin(ang) * 96);
+          ctx.lineTo(cx + Math.cos(ang) * 106, cy + Math.sin(ang) * 106);
+          ctx.stroke();
+        }
+
+        // Target Peak Ring (82% Envelope Peak)
+        ctx.strokeStyle = isInsidePeak ? '#fde047' : 'rgba(255, 255, 255, 0.65)';
+        ctx.lineWidth = isInsidePeak ? 6 : 2.8;
+        ctx.beginPath();
+        ctx.arc(cx, cy, targetR, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Shrinking Envelope Ring
+        ctx.strokeStyle = isInsidePeak ? '#00f5d4' : '#f59e0b';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(cx, cy, Math.max(10, currentR), 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = isInsidePeak ? '#fde047' : '#ffffff';
+        ctx.font = '900 14px "Noto Sans TC", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(isInsidePeak ? '★ PEAK (-1.0 dBFS)! 立即釋放! ★' : `詠唱蓄力: ${card.name}`, cx, cy - 5);
+
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = '700 11px "JetBrains Mono", monospace';
+        ctx.fillText(`${elapsed.toFixed(2)}s / Peak ${peakTime.toFixed(2)}s`, cx, cy + 16);
+        ctx.restore();
+      }
+
+      // 10. Particles & Floating Combat Texts
+      for (let i = state.particles.length - 1; i >= 0; i--) {
+        const p = state.particles[i];
+        p.x += (p.vx * dt) / w;
+        p.y += (p.vy * dt) / h;
+        p.alpha -= dt * 1.8;
+        if (p.alpha <= 0) {
+          state.particles.splice(i, 1);
+          continue;
+        }
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, p.alpha);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x * w, p.y * h, p.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      for (let i = state.floatingTexts.length - 1; i >= 0; i--) {
+        const ft = state.floatingTexts[i];
+        ft.y += (ft.vy * dt) / h;
+        ft.alpha -= dt * 0.85;
+        if (ft.alpha <= 0) {
+          state.floatingTexts.splice(i, 1);
+          continue;
+        }
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, ft.alpha);
+        ctx.fillStyle = ft.color;
+        ctx.font = '900 13px "Noto Sans TC", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+        ctx.shadowBlur = 6;
+        ctx.fillText(ft.text, ft.x * w, ft.y * h);
+        ctx.restore();
+      }
+
+      ctx.restore();
+    }
+
+    function gameLoop(now) {
+      const dt = Math.min(0.1, (now - lastTime) / 1000);
+      lastTime = now;
+      updateGame(dt);
+      drawGame(dt);
+      requestAnimationFrame(gameLoop);
+    }
+
+    // =========================================================================
+    // 7. EVENT LISTENERS & INITIALIZATION
+    // =========================================================================
+    window.onload = () => {
+      loadSavedRecord();
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+
+      buildMasterDeckFromPreset();
+      spawnWaveEnemies();
+      updateHUD();
+
+      window.addEventListener('pointerup', () => {
+        if (state.activeCast && state.activeCast.elapsed >= 0.14) {
+          releaseActiveCast();
+        }
+      });
+
+      canvas.addEventListener('click', (e) => {
+        audio.init();
+        if (state.activeCast) {
+          releaseActiveCast();
+          return;
+        }
+        const rect = canvas.getBoundingClientRect();
+        const clickY = (e.clientY - rect.top) / rect.height;
+        if (clickY < 0.39) state.selectedLane = 0;
+        else if (clickY < 0.65) state.selectedLane = 1;
+        else state.selectedLane = 2;
+        updateHUD();
+      });
+
+      [0, 1, 2].forEach(idx => {
+        document.getElementById(`btnLane${idx}`).addEventListener('click', () => {
+          audio.init();
+          state.selectedLane = idx;
+          updateHUD();
+        });
+      });
+
+      document.getElementById('btnReleaseCast').addEventListener('click', () => {
+        audio.init();
+        releaseActiveCast();
+      });
+
+      document.getElementById('btnEndTurn').addEventListener('click', () => {
+        audio.init();
+        if (state.gameOver) return;
+        state.mana = state.maxMana;
+        state.armor = Math.floor(state.armor * 0.7);
+        state.enemies.forEach(e => {
+          if (e.stunTimer <= 0) {
+            e.x = Math.max(0.20, e.x - 0.042);
+            e.attackTimer = Math.max(0.15, e.attackTimer - 1.2);
+            if (e.attackTimer <= 1.35 && !e.telegraphing) {
+              e.telegraphing = true;
+              audio.playEnemyTelegraph(e.lane, e.weakness, e.isBoss);
+            }
+          }
+        });
+        drawNewHand();
+        updateHUD();
+        showToast('回合推進：魔力已補滿並重抽 5 張牌（護盾衰減 30%，敵軍推進並縮短 1.2s 攻擊倒數）！');
+      });
+
+      document.getElementById('btnRestartGame').addEventListener('click', () => {
+        audio.init();
+        restartFullGame();
+      });
+
+      document.getElementById('btnParryMetal').addEventListener('click', () => handleParryInput('metal'));
+      document.getElementById('btnParryCrystal').addEventListener('click', () => handleParryInput('crystal'));
+      document.getElementById('btnParryEnergy').addEventListener('click', () => handleParryInput('energy'));
+
+      document.getElementById('btnTimbreSwitch').addEventListener('click', () => {
+        audio.init();
+        state.timbreMode = state.timbreMode === 'natural' ? 'stylized' : 'natural';
+        state.bossNoiseJamming = false;
+        document.body.classList.toggle('mode-stylized', state.timbreMode === 'stylized');
+        const label = document.getElementById('timbreLabel');
+        if (state.timbreMode === 'stylized') {
+          label.textContent = '調音台：風格化共鳴 (Stylized ±110ms)';
+        } else {
+          label.textContent = '調音台：寫實共鳴 (Natural ±65ms)';
+        }
+        if (hasRelic('R10')) {
+          state.nextCardBuff = true;
+          showToast('觸發傳說遺物【頻譜煉金爐】：下張卡牌傷害 +50% 並淨化干擾！');
+        } else {
+          showToast(`已切換為${state.timbreMode === 'stylized' ? '風格化共鳴（Peak 充能 +1.5 格，判定 ±110ms）' : '寫實共鳴（單發與穿甲傷害 +30% + 狙殺充能，判定 ±65ms）'}`);
+        }
+        audio.updateAmbientDrone(state.act);
+        audio.playImpactOrRelease(true, ALL_CARDS[0], 0);
+        updateHUD();
+        renderHandUI();
+      });
+
+      document.getElementById('btnBlindModeToggle').addEventListener('click', (e) => {
+        audio.init();
+        state.blindMode = !state.blindMode;
+        e.currentTarget.textContent = `盲聽挑戰：${state.blindMode ? '開 (2x反傷)' : '關'}`;
+        e.currentTarget.className = state.blindMode
+          ? 'px-2.5 py-1.5 rounded-xl text-xs font-bold bg-rose-500/25 text-rose-200 border border-rose-400/50 transition'
+          : 'px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-900/90 hover:bg-slate-800 text-slate-200 border border-slate-700/90 transition';
+        showToast(state.blindMode
+          ? '已開啟【純聽覺盲測挑戰】：隱藏頭頂 Q/W/E 文字，請依賴立體聲與材質音色舉盾（成功彈反享 2 倍反傷與 +10G）！'
+          : '已關閉盲聽挑戰，恢復顯示敵人頭頂弱點提示。');
+      });
+
+      const shopModal = document.getElementById('shopModal');
+      document.getElementById('btnOpenShop').addEventListener('click', () => {
+        audio.init();
+        renderShopModal();
+        shopModal.classList.remove('hidden');
+        shopModal.classList.add('flex');
+      });
+      document.getElementById('btnOpenShopFromReward').addEventListener('click', () => {
+        audio.init();
+        renderShopModal();
+        shopModal.classList.remove('hidden');
+        shopModal.classList.add('flex');
+      });
+      document.getElementById('btnCloseShop').addEventListener('click', () => {
+        shopModal.classList.add('hidden');
+        shopModal.classList.remove('flex');
+      });
+
+      document.getElementById('btnBuyMaxManaShop').addEventListener('click', () => {
+        if (state.maxMana >= 5) {
+          showToast('聲波核心魔力上限已達最高 5 點！');
+          return;
+        }
+        if (state.gold < 150) {
+          showToast('金幣不足 150G，無法擴容聲波核心！');
+          return;
+        }
+        state.gold -= 150;
+        state.maxMana += 1;
+        state.mana = state.maxMana;
+        audio.playImpactOrRelease(true, ALL_CARDS[0], 0);
+        setTelemetry('升級上升鈴聲 (魔力上限 +1)', '過關音效 (137)');
+        showToast(`聲波核心擴容成功！最大魔力上限提升至 ${state.maxMana} 點！`);
+        updateHUD();
+        renderHandUI();
+        renderShopModal();
+      });
+
+      document.getElementById('btnBuyMaxHpShop').addEventListener('click', () => {
+        if (state.gold < 90) {
+          showToast('金幣不足 90G，無法加固鍊金塔裝甲！');
+          return;
+        }
+        state.gold -= 90;
+        state.maxHp += 15;
+        state.hp = Math.min(state.maxHp, state.hp + 15);
+        state.armor += 10;
+        audio.playShieldParry('metal', true);
+        setTelemetry('裝甲啟動 + 金屬格擋聲', '蓄力充能 (1,713)');
+        showToast(`鍊金塔裝甲加固完成！最大耐久度提升至 ${state.maxHp}（+15 HP / +10 護盾）！`);
+        updateHUD();
+        renderHandUI();
+        renderShopModal();
+      });
+
+      document.getElementById('btnBuyRelicShop').addEventListener('click', () => {
+        const unowned = ALL_RELICS.filter(r => !state.ownedRelics.includes(r.id));
+        if (unowned.length === 0) {
+          showToast('你已經擁有全部 10 件聲學遺物！');
+          return;
+        }
+        if (state.gold < 120) {
+          showToast('金幣不足 120G，無法購買遺物盲盒！');
+          return;
+        }
+        state.gold -= 120;
+        const picked = unowned[Math.floor(Math.random() * unowned.length)];
+        state.ownedRelics.push(picked.id);
+        audio.playImpactOrRelease(true, ALL_CARDS[0], 0);
+        setTelemetry(`${picked.sfxName}`, '黑市購入聲學遺物');
+        showToast(`購入聲學遺物：【${picked.name}】！`);
+        updateHUD();
+        renderHandUI();
+        renderShopModal();
+      });
+
+      const simModal = document.getElementById('simModal');
+      document.getElementById('btnOpenSim').addEventListener('click', () => {
+        runTenRoundBalanceSim();
+        simModal.classList.remove('hidden');
+        simModal.classList.add('flex');
+      });
+      document.getElementById('btnRerunSim').addEventListener('click', () => {
+        runTenRoundBalanceSim();
+        showToast('已完成最新 10 輪 AI 模擬對戰壓測！');
+      });
+      document.getElementById('btnCloseSim').addEventListener('click', () => {
+        simModal.classList.add('hidden');
+        simModal.classList.remove('flex');
+      });
+
+      document.getElementById('btnAmbientToggle').addEventListener('click', (e) => {
+        audio.init();
+        audio.ambientEnabled = !audio.ambientEnabled;
+        e.currentTarget.textContent = `環境底噪：${audio.ambientEnabled ? '開' : '關'}`;
+        audio.updateAmbientDrone(state.act);
+      });
+
+      document.getElementById('btnMuteToggle').addEventListener('click', (e) => {
+        audio.muted = !audio.muted;
+        e.currentTarget.textContent = `音效：${audio.muted ? '靜音' : '開啟'}`;
+        audio.updateAmbientDrone(state.act);
+      });
+
+      document.getElementById('btnCampfireRest').addEventListener('click', () => {
+        audio.init();
+        if (state.gameOver) return;
+        if (state.gold < 25) {
+          showToast('金幣不足 25G，無法點燃存檔點營火！');
+          return;
+        }
+        state.gold -= 25;
+        const healAmt = hasRelic('R06') ? 25 : 15;
+        state.hp = Math.min(state.maxHp, state.hp + healAmt);
+        if (hasRelic('R06')) state.armor += 10;
+        audio.playImpactOrRelease(true, ALL_CARDS[10], 0);
+        setTelemetry('存檔點火焰與鈴聲', '營火休息事件');
+        updateHUD();
+        renderHandUI();
+        showToast(`點燃存檔點營火！回復 +${healAmt} 塔防耐久度`);
+      });
+
+      document.getElementById('selectPresetDeck').addEventListener('change', (e) => {
+        state.deckPreset = e.target.value;
+        state.mana = state.maxMana;
+        buildMasterDeckFromPreset();
+        updateHUD();
+        showToast('已重建流派牌庫並洗牌抽取 5 張手牌！');
+      });
+
+      document.getElementById('btnDrawFullHand').addEventListener('click', () => {
+        state.mana = state.maxMana + 2;
+        drawNewHand();
+        updateHUD();
+        showToast('沙盒補給：魔力已充能至 5 點並重抽滿手牌！');
+      });
+
+      document.getElementById('btnSkipReward').addEventListener('click', () => {
+        state.gold += 35;
+        advanceToNextWave();
+      });
+
+      const codexModal = document.getElementById('codexModal');
+      document.getElementById('btnOpenCodex').addEventListener('click', () => {
+        audio.init();
+        renderCodexModal();
+        codexModal.classList.remove('hidden');
+        codexModal.classList.add('flex');
+      });
+      document.getElementById('btnCloseCodex').addEventListener('click', () => {
+        codexModal.classList.add('hidden');
+        codexModal.classList.remove('flex');
+      });
+      document.querySelectorAll('.codex-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.codex-tab').forEach(t => {
+            t.className = 'codex-tab px-3 py-1 rounded-lg text-xs font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700';
+          });
+          tab.className = 'codex-tab px-3 py-1 rounded-lg text-xs font-bold bg-amber-500 text-slate-950';
+          state.codexFilter = tab.getAttribute('data-filter');
+          renderCodexModal();
+        });
+      });
+
+      const guideModal = document.getElementById('guideModal');
+      document.getElementById('btnOpenGuide').addEventListener('click', () => {
+        guideModal.classList.remove('hidden');
+        guideModal.classList.add('flex');
+      });
+      document.getElementById('btnCloseGuide').addEventListener('click', () => {
+        guideModal.classList.add('hidden');
+        guideModal.classList.remove('flex');
+      });
+
+      window.addEventListener('keydown', (e) => {
+        if (e.code === 'Space') {
+          if (state.activeCast) {
+            e.preventDefault();
+            releaseActiveCast();
+          }
+        } else if (e.key === '1') {
+          state.selectedLane = 0; updateHUD();
+        } else if (e.key === '2') {
+          state.selectedLane = 1; updateHUD();
+        } else if (e.key === '3') {
+          state.selectedLane = 2; updateHUD();
+        } else if (e.key === 'q' || e.key === 'Q') {
+          handleParryInput('metal');
+        } else if (e.key === 'w' || e.key === 'W') {
+          handleParryInput('crystal');
+        } else if (e.key === 'e' || e.key === 'E') {
+          handleParryInput('energy');
+        } else if (e.key === 'r' || e.key === 'R') {
+          document.getElementById('btnEndTurn').click();
+        } else if (e.key === 'Escape') {
+          codexModal.classList.add('hidden');
+          codexModal.classList.remove('flex');
+          guideModal.classList.add('hidden');
+          guideModal.classList.remove('flex');
+          shopModal.classList.add('hidden');
+          shopModal.classList.remove('flex');
+          simModal.classList.add('hidden');
+          simModal.classList.remove('flex');
+        }
+      });
+
+      requestAnimationFrame(gameLoop);
+    };
+  </script>
+</body>
+</html>
