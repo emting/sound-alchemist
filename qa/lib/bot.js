@@ -177,4 +177,48 @@ async function playRun(page, { budgetMs, onBossWave } = {}) {
   return log;
 }
 
-module.exports = { playRun, snapshot, cardCenter, extNow };
+// One charged cast released `offsetMs` from its peak, timed on the outside clock only.
+async function castOnce(page, offsetMs, during) {
+  let s = await snapshot(page);
+  for (let i = 0; i < 100 && (s.stun > 0 || !s.hand.some((c) => c.charge >= 0.5 && c.cost <= s.mana)); i++) {
+    if (s.stun <= 0) await page.keyboard.press('r');
+    await sleep(150);
+    s = await snapshot(page);
+  }
+  const card = s.hand.filter((c) => c.charge >= 0.5 && c.cost <= s.mana).sort((a, b) => a.charge - b.charge)[0];
+  if (!card) return null;
+  const pos = await cardCenter(page, card.i);
+  await page.mouse.move(pos.x, pos.y);
+  const pressSend = extNow();
+  await page.mouse.down();
+  const pressAck = extNow();
+  await page.mouse.up();
+  const c = (await snapshot(page)).cast;
+  if (!c) return null;
+  if (during) await during();
+  const deadlineMs = card.charge * 1000 + 0.85 * c.windowMs; // overload deadline, from the press
+  if (offsetMs === 'overload-hold') {
+    // Never released: the game's own loop must fire the overload misfire.
+    await sleep(deadlineMs + 700 - (extNow() - pressSend));
+    const s2 = await snapshot(page);
+    return { index: c.index, card: card.id, aimMs: offsetMs, offPeak: true, released: false, misfired: !s2.cast, pressSend, pressAck, relSend: null, relAck: null };
+  }
+  if (offsetMs === 'overload-release') offsetMs = deadlineMs - c.peakMs + 25; // released just past the deadline
+  if (offsetMs === 'audio') {
+    // Reads the game's own audio-clock elapsed time (the getter the cast UI uses every frame).
+    const audioElapsed = () => page.evaluate(() => (state.activeCast ? state.activeCast.elapsed * 1000 : null));
+    for (let e = await audioElapsed(); e !== null && e < c.peakMs - 25 && extNow() - pressSend < c.peakMs + 4000; e = await audioElapsed()) await sleep(Math.min(40, Math.max(1, c.peakMs - 25 - e)));
+  } else {
+    await sleep(c.peakMs + offsetMs - (extNow() - pressSend));
+  }
+  const relSend = extNow();
+  await page.keyboard.down('Space');
+  const relAck = extNow();
+  await page.keyboard.up('Space');
+  const last = await page.evaluate(() => { const a = window.__qa.casts; return a[a.length - 1] || null; });
+  const released = !!last && last.index === c.index;
+  const stun = (await snapshot(page)).stun;
+  return { index: c.index, card: card.id, aimMs: offsetMs, offPeak: offsetMs === 'audio' || Math.abs(offsetMs) > c.windowMs, released, misfired: !released && stun > 0, pressSend, pressAck, relSend, relAck };
+}
+
+module.exports = { playRun, snapshot, cardCenter, extNow, castOnce };

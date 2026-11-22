@@ -7,7 +7,8 @@
 //
 // The checks are not tuned to pass: results are written to qa/results/ either way.
 const { test, expect } = require('@playwright/test');
-const { GAME_URL, TOLERANCE_MS, CPU_RATE, sleep, openGame, applyCpuThrottle, checkOverflow, analyseCasts, writeResult, audioSinkInfo, audioClockStats } = require('../lib/harness');
+const { TOLERANCE_MS, CPU_RATE, sleep, openGame, applyCpuThrottle, checkOverflow, analyseCasts, writeResult, audioSinkInfo, audioClockStats, HTTP, gameUrl, pageErrors, assetStatus, analyseMp3 } = require('../lib/harness');
+const { castOnce } = require('../lib/bot');
 const { playRun } = require('../lib/bot');
 
 const SIM_ITERATIONS = Number(process.env.QA_SIM_ITERATIONS || 10);
@@ -52,7 +53,7 @@ test(`10-run / 18-wave simulator under ${CPU_RATE}x CPU throttle at 480px`, asyn
     await page.locator(close).click();
   }
 
-  const result = { throttle, iterations, overflow, frames: await frameStats(page) };
+  const result = { throttle, iterations, overflow, frames: await frameStats(page), gameUrl: await gameUrl(), assets: await assetStatus(page), pageErrors: pageErrors(page) };
   writeResult('simulator.json', result);
 
   expect.soft(throttle.measuredSlowdown, 'CPU throttle must actually be in effect').toBeGreaterThan(CPU_RATE > 1 ? 1.2 : 0);
@@ -64,6 +65,7 @@ test(`10-run / 18-wave simulator under ${CPU_RATE}x CPU throttle at 480px`, asyn
     }
   }
   for (const o of overflow) expect.soft(o, `no horizontal overflow at 480px: ${o.label}`).toMatchObject({ ok: true });
+  expect.soft(pageErrors(page), 'no page errors, console errors or failed requests').toEqual([]);
 });
 
 test(`3 Act Bosses under ${CPU_RATE}x CPU throttle: Peak registration within ±${TOLERANCE_MS}ms, no overflow at 480px`, async ({ page }) => {
@@ -98,7 +100,10 @@ test(`3 Act Bosses under ${CPU_RATE}x CPU throttle: Peak registration within ±$
     peak: { all: analysis.all, bossWaves: analysis.bossWaves },
     overflow,
     frames: await frameStats(page),
-    gameUrl: GAME_URL,
+    gameUrl: await gameUrl(),
+    assets: await assetStatus(page),
+    mp3: analyseMp3(await page.evaluate(() => window.__qa.ops), await page.evaluate(() => window.__qa.mp3Unattributed)),
+    pageErrors: pageErrors(page),
     audioSink,
     audioClock: await audioClockStats(page),
     castsStarted: await page.evaluate(() => window.__qa.castsStarted),
@@ -114,4 +119,70 @@ test(`3 Act Bosses under ${CPU_RATE}x CPU throttle: Peak registration within ±$
   // Independent of the page: verdicts against Node's clock around each input command.
   expect.soft(analysis.all.extMismatches, `Peak/miss verdicts that contradict the outside-the-page clock by more than ${TOLERANCE_MS}ms`).toBe(0);
   for (const o of overflow) expect.soft(o, `no horizontal overflow at 480px: ${o.label}`).toMatchObject({ ok: true });
+  expect.soft(pageErrors(page), 'no page errors, console errors or failed requests').toEqual([]);
+  if (HTTP) {
+    expect.soft(result.assets, 'all MP3 assets fetched and decoded over http').toMatchObject({ status: 'ready', fetched: 40, decoded: 40 });
+    expect.soft(result.mp3.violations, 'MP3 sources per sound: Peak release 1, off-Peak 0, overload 0, instant card 1, relic 1').toEqual({ peakReleaseNot1: 0, offPeakReleaseNot0: 0, overloadNot0: 0, instantCardNot1: 0, relicNot1: 0, unattributed: 0 });
+  }
+});
+
+// Sounds the campaign bot rarely or never triggers: overload misfires (held past the deadline, and
+// released just past it), codex previews of every card and relic, and a shop relic purchase.
+test(`MP3 path over http under ${CPU_RATE}x CPU throttle: overloads, codex previews, relics`, async ({ page }) => {
+  test.skip(!HTTP, 'needs QA_HTTP=1 (assets are not fetched on file://)');
+  await openGame(page);
+  const throttle = await applyCpuThrottle(page);
+  const steps = [];
+  // Nothing here parries, so the player can die mid-test: restart through the game's own button.
+  const revive = async () => {
+    if (await page.evaluate(() => state.gameOver)) { await page.locator('#btnRestartGame').click(); await sleep(500); }
+  };
+  // First cast creates the AudioContext; decoding starts there.
+  steps.push(await castOnce(page, 0));
+  await page.waitForFunction(() => { const a = window.__qa.assetStatus(); return a && a.fetched > 0 && a.decoded === a.fetched; }, null, { timeout: 30000 }).catch(() => {});
+  const assetsAfterFirstCast = await assetStatus(page);
+  await revive();
+  await page.locator('#btnOpenCodex').click();
+  const previews = {};
+  for (const [key, filter, sel] of [['cards', 'all', '.btn-preview-card'], ['relics', 'relics', '.btn-preview-relic']]) {
+    await page.locator(`.codex-tab[data-filter="${filter}"]`).click();
+    const n = (previews[key] = await page.locator(sel).count());
+    for (let i = 0; i < n; i++) { await page.locator(sel).nth(i).click(); await sleep(60); }
+  }
+  await sleep(3500); // let the scheduled preview hits start
+  await page.locator('#btnCloseCodex').click();
+  await revive();
+  await page.evaluate(() => { state.gold = Math.max(state.gold, 400); }); // test set-up only: afford the relic box
+  await page.locator('#btnOpenShop').click();
+  const relicsBefore = await page.evaluate(() => state.ownedRelics.length);
+  await page.locator('#btnBuyRelicShop').click();
+  await sleep(300);
+  const relicsBought = (await page.evaluate(() => state.ownedRelics.length)) - relicsBefore;
+  await page.locator('#btnCloseShop').click();
+  for (const aim of [0, 'overload-hold', 0, 'overload-release', 'overload-hold', -400, 'overload-release', 0, 'overload-hold', 'overload-release']) {
+    await revive();
+    steps.push(await castOnce(page, aim));
+    await sleep(1300); // past the 1s overload stun
+  }
+
+  const ops = await page.evaluate(() => window.__qa.ops);
+  const result = {
+    throttle, gameUrl: await gameUrl(), assetsAfterFirstCast, assets: await assetStatus(page), previews, relicsBought,
+    steps: steps.filter(Boolean).map(({ index, card, aimMs, released, misfired }) => ({ index, card, aimMs, released, misfired })),
+    mp3: analyseMp3(ops, await page.evaluate(() => window.__qa.mp3Unattributed)),
+    codex: {
+      relicPreviews: ops.filter((o) => o.type === 'relic').map((o) => ({ id: o.card, assetReady: o.assetReady, mp3: o.mp3.length })),
+      cardPreviews: ops.filter((o) => (o.type === 'cardHitSound' || o.type === 'instantSound') && !o.parent).map((o) => ({ id: o.card, type: o.type, assetReady: o.assetReady, mp3: o.mp3.length })),
+    },
+    audioSink: audioSinkInfo(),
+    pageErrors: pageErrors(page),
+    ops,
+  };
+  writeResult('mp3-path.json', result);
+  expect.soft(result.assets, 'all MP3 assets fetched and decoded over http').toMatchObject({ status: 'ready', fetched: 40, decoded: 40 });
+  expect.soft(result.mp3.violations, 'MP3 sources per sound: Peak release 1, off-Peak 0, overload 0, instant card 1, relic 1').toEqual({ peakReleaseNot1: 0, offPeakReleaseNot0: 0, overloadNot0: 0, instantCardNot1: 0, relicNot1: 0, unattributed: 0 });
+  expect.soft(result.mp3.overload.count, 'overload misfires exercised').toBeGreaterThan(0);
+  expect.soft(previews, 'codex lists every card and relic').toEqual({ cards: 30, relics: 10 });
+  expect.soft(result.codex.cardPreviews.filter((p) => p.assetReady && p.mp3 !== 1), 'codex card previews start exactly one MP3').toEqual([]);
+  expect.soft(pageErrors(page), 'no page errors, console errors or failed requests').toEqual([]);
 });

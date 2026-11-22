@@ -3,7 +3,16 @@ const path = require('path');
 const instrument = require('./instrument');
 
 // QA_GAME_FILE points the harness at another checkout's sound_alchemist.html (e.g. a PR worktree).
-const GAME_URL = 'file://' + path.resolve(process.env.QA_GAME_FILE || path.resolve(__dirname, '..', '..', 'sound_alchemist.html'));
+const GAME_FILE = path.resolve(process.env.QA_GAME_FILE || path.resolve(__dirname, '..', '..', 'sound_alchemist.html'));
+const GAME_URL = 'file://' + GAME_FILE;
+// QA_HTTP=1 serves the game's directory over http://127.0.0.1 so the MP3 assets load.
+const HTTP = !!process.env.QA_HTTP;
+let served = null;
+async function gameUrl() {
+  if (!HTTP) return GAME_URL;
+  if (!served) served = await require('./serve').serve(path.dirname(GAME_FILE));
+  return `${served.origin}/${path.basename(GAME_FILE)}`;
+}
 const RESULTS_DIR = path.resolve(process.env.QA_RESULTS_DIR || path.resolve(__dirname, '..', 'results'));
 const TOLERANCE_MS = 5;
 const CPU_RATE = Number(process.env.QA_CPU_RATE || 4);
@@ -12,11 +21,59 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, Math.max(0, ms)));
 
 async function openGame(page) {
   await page.addInitScript(instrument, { toleranceMs: TOLERANCE_MS });
-  await page.goto(GAME_URL);
+  const errors = (page.__qaErrors = []);
+  page.on('pageerror', (e) => errors.push({ kind: 'pageerror', text: String(e && e.stack ? e.stack : e).slice(0, 600) }));
+  page.on('console', (m) => { if (m.type() === 'error') errors.push({ kind: 'console.error', text: m.text().slice(0, 600) }); });
+  page.on('requestfailed', (r) => errors.push({ kind: 'requestfailed', text: `${r.url()} ${r.failure() ? r.failure().errorText : ''}` }));
+  page.on('response', (r) => { if (r.status() >= 400) errors.push({ kind: 'http', text: `${r.status()} ${r.url()}` }); });
+  await page.goto(await gameUrl());
   await page.waitForFunction(() => window.__qa && window.__qa.hooked && window.tailwind && typeof state === 'object' && state.hand.length > 0);
   await page.evaluate(() => document.fonts.ready);
   const hookError = await page.evaluate(() => window.__qa.hookError || null);
   if (hookError) throw new Error(hookError);
+  // Over http, wait for the asset fetches to settle (decoding only starts with the AudioContext).
+  if (HTTP) await page.waitForFunction(() => { const a = window.__qa.assetStatus && window.__qa.assetStatus(); return !a || (a.status !== 'idle' && a.status !== 'loading'); }, null, { timeout: 30000 }).catch(() => {});
+}
+
+const pageErrors = (page) => page.__qaErrors || [];
+const assetStatus = (page) => page.evaluate(() => (window.__qa.assetStatus ? window.__qa.assetStatus() : null));
+
+// MP3 buffer sources started per kind of game sound call. Expectations (when the asset was decoded):
+// Peak release 1, off-Peak release 0, overload 0, instant card 1, relic 1.
+function analyseMp3(ops, unattributed) {
+  const n = (list) => list.reduce((m, o) => { const k = String(o.mp3.length); m[k] = (m[k] || 0) + 1; return m; }, {});
+  const rel = ops.filter((o) => o.type === 'release' && !o.overload);
+  const group = (list) => ({ count: list.length, assetReady: list.filter((o) => o.assetReady).length, mp3StartsHistogramWhenReady: n(list.filter((o) => o.assetReady)), mp3StartsWhenNotReady: list.filter((o) => !o.assetReady).reduce((a, o) => a + o.mp3.length, 0) });
+  const peak = rel.filter((o) => o.judgedPeak);
+  // Peak-release seam: how far in the past the release's audio time already was when the clip was
+  // requested, and how much of the clip (beyond its attack point) was skipped to catch up.
+  const seam = peak.filter((o) => o.mp3.length === 1 && o.plays && o.plays.length === 1 && o.plays[0].requestedLateMs !== null)
+    .map((o) => ({ late: o.plays[0].requestedLateMs, skip: o.mp3[0].offset * 1000 - o.plays[0].attackMs }));
+  const late = seam.map((x) => x.late).sort((a, b) => a - b);
+  const offs = seam.map((x) => x.skip).sort((a, b) => a - b);
+  const out = {
+    peakRelease: group(peak),
+    offPeakRelease: group(rel.filter((o) => !o.judgedPeak)),
+    overload: group(ops.filter((o) => o.type === 'overload')),
+    overloadOnRelease: ops.filter((o) => o.type === 'release' && o.overload).length,
+    instantCard: group(ops.filter((o) => o.type === 'press' && o.instant)),
+    relic: group(ops.filter((o) => o.type === 'relic')),
+    codexCardPreview: group(ops.filter((o) => o.type === 'cardHitSound' && !o.parent)),
+    unattributedMp3Starts: unattributed.length,
+    peakStartLateMs: late.length ? { min: late[0], median: percentile(late, 50), p95: percentile(late, 95), max: late[late.length - 1] } : null,
+    peakCatchUpSkipMs: offs.length ? { min: offs[0], median: percentile(offs, 50), p95: percentile(offs, 95), max: offs[offs.length - 1] } : null,
+    peakLateBeyondSkipMs: seam.length ? Math.max(...seam.map((x) => x.late - x.skip)) : null, // lateness the skip did not make up
+  };
+  const bad = (g, want) => Object.entries(g.mp3StartsHistogramWhenReady).filter(([k]) => Number(k) !== want).reduce((a, [, v]) => a + v, 0) + (g.mp3StartsWhenNotReady ? 1 : 0);
+  out.violations = {
+    peakReleaseNot1: bad(out.peakRelease, 1),
+    offPeakReleaseNot0: bad(out.offPeakRelease, 0),
+    overloadNot0: bad(out.overload, 0),
+    instantCardNot1: bad(out.instantCard, 1),
+    relicNot1: bad(out.relic, 1),
+    unattributed: unattributed.length,
+  };
+  return out;
 }
 
 // Fixed JS workload, used to prove the CDP throttle is really applied.
@@ -250,4 +307,4 @@ function writeResult(name, data) {
   return file;
 }
 
-module.exports = { GAME_URL, RESULTS_DIR, TOLERANCE_MS, CPU_RATE, sleep, openGame, applyCpuThrottle, checkOverflow, analyseCasts, writeResult, audioSinkInfo, audioClockStats };
+module.exports = { GAME_URL, RESULTS_DIR, TOLERANCE_MS, CPU_RATE, sleep, openGame, applyCpuThrottle, checkOverflow, analyseCasts, writeResult, audioSinkInfo, audioClockStats, HTTP, gameUrl, pageErrors, assetStatus, analyseMp3 };
