@@ -1060,34 +1060,37 @@
         return idx < env.rms.length ? env.rms[idx] : 0;
       }
 
-      // Plays the MP3 for a card/relic id. With peakAt (AudioContext time) the clip is
-      // shifted so its loudest 50ms window lands on that instant. Returns false when
+      // Seconds into the clip where it first reaches half of its loudest 50ms RMS window.
+      // Hits start there so that a quiet lead-in or long build-up does not delay the impact.
+      attackTime(id) {
+        const env = this.getEnvelope(id);
+        if (!env || !env.rms || !env.peakRms) return 0;
+        const idx = env.rms.findIndex((v) => v >= env.peakRms * 0.5);
+        return idx > 0 ? (idx * (env.windowMs || this.windowMs)) / 1000 : 0;
+      }
+
+      // Plays the MP3 for a card/relic id at AudioContext time `when` (default: now).
+      // fromAttack skips the part of the clip before attackTime(). Returns false when
       // the caller should use the procedural synthesizer instead.
-      play(id, { out = null, peakAt = null } = {}) {
+      play(id, { out = null, when = 0, fromAttack = false, level = 1 } = {}) {
         const entry = this.entries.get(id);
         if (!this.ctx || !entry || !entry.buffer) return false;
         try {
-          const now = this.ctx.currentTime;
           const src = this.ctx.createBufferSource();
           const gain = this.ctx.createGain();
           src.buffer = entry.buffer;
-          let when = now;
-          let offset = 0;
-          if (peakAt !== null) {
-            const lead = Math.min(entry.envelope.peakTime || 0, entry.buffer.duration);
-            const start = peakAt - lead;
-            if (start >= now) when = start;
-            else offset = Math.min(now - start, Math.max(0, entry.buffer.duration - 0.05));
-          }
+          const start = Math.max(when, this.ctx.currentTime);
+          const offset = fromAttack ? Math.min(this.attackTime(id), Math.max(0, entry.buffer.duration - 0.05)) : 0;
+          const vol = this.gainLevel * level;
           if (offset > 0) {
-            gain.gain.setValueAtTime(0.0001, when);
-            gain.gain.linearRampToValueAtTime(this.gainLevel, when + 0.008);
+            gain.gain.setValueAtTime(0.0001, start);
+            gain.gain.linearRampToValueAtTime(vol, start + 0.008);
           } else {
-            gain.gain.setValueAtTime(this.gainLevel, when);
+            gain.gain.setValueAtTime(vol, start);
           }
           src.connect(gain);
           gain.connect(out || this.ctx.destination);
-          src.start(when, offset);
+          src.start(start, offset);
           return true;
         } catch (e) {
           return false;
@@ -1190,8 +1193,6 @@
         const out = this.createPanner(panVal);
         const isStylized = state.timbreMode === 'stylized';
 
-        if (audioAssets.play(card.id, { out, peakAt: now + dur * 0.82 })) return;
-
         if (card.synthType && card.synthType.startsWith('fart_')) {
           this.playFartEnvelope(card.synthType, dur, out, isStylized);
           return;
@@ -1228,21 +1229,6 @@
         sub.start(now);
         osc.stop(now + dur);
         sub.stop(now + dur);
-      }
-
-      // Instant (0s charge) cards and relics: real MP3 when loaded, otherwise the synth chime.
-      playInstantCard(card, panVal = 0) {
-        this.init();
-        if (!this.ctx || this.muted) return;
-        if (audioAssets.has(card.id) && audioAssets.play(card.id, { out: this.createPanner(panVal) })) return;
-        this.playImpactOrRelease(true, card, panVal);
-      }
-
-      playRelic(relic) {
-        this.init();
-        if (!this.ctx || this.muted) return;
-        if (audioAssets.play(relic.id, { out: this.compressor })) return;
-        this.playImpactOrRelease(true, ALL_CARDS[0], 0);
       }
 
       playFartEnvelope(type, dur, outNode, isStylized) {
@@ -1360,6 +1346,37 @@
           osc.start(now);
           osc.stop(now + 0.24);
         }
+      }
+
+      // Charged cards keep the synth charge; the MP3 is the hit. On a peak release it replaces
+      // the synth chime, off-peak it plays at half level under the synth miss tone.
+      // delaySec > 0 (codex preview) schedules the hit that far ahead; without an asset nothing is added.
+      playCardHit(isPeak, card, panVal = 0, delaySec = 0) {
+        this.init();
+        if (!this.ctx || this.muted) return;
+        const played = audioAssets.has(card.id) && audioAssets.play(card.id, {
+          out: this.createPanner(panVal),
+          when: this.ctx.currentTime + delaySec,
+          fromAttack: true,
+          level: isPeak ? 1 : 0.5
+        });
+        if (delaySec > 0 || (played && isPeak)) return;
+        this.playImpactOrRelease(isPeak, card, panVal);
+      }
+
+      // Instant (0s charge) cards and relics: real MP3 when loaded, otherwise the synth chime.
+      playInstantCard(card, panVal = 0) {
+        this.init();
+        if (!this.ctx || this.muted) return;
+        if (audioAssets.has(card.id) && audioAssets.play(card.id, { out: this.createPanner(panVal) })) return;
+        this.playImpactOrRelease(true, card, panVal);
+      }
+
+      playRelic(relic) {
+        this.init();
+        if (!this.ctx || this.muted) return;
+        if (audioAssets.play(relic.id, { out: this.compressor })) return;
+        this.playImpactOrRelease(true, ALL_CARDS[0], 0);
       }
 
       playShieldParry(type = 'metal', success = true) {
@@ -1874,7 +1891,7 @@
       }
       resetReleaseButtonUI();
 
-      audio.playImpactOrRelease(isPeak, card, pan);
+      audio.playCardHit(isPeak, card, pan);
       executeCardEffect(card, isPeak);
 
       const used = state.hand.splice(handIndex, 1)[0];
@@ -2907,7 +2924,10 @@
         `;
         el.querySelector('.btn-preview-card').addEventListener('click', () => {
           if (c.charge <= 0.01) audio.playInstantCard(c, 0);
-          else audio.playChargeEnvelope(c, 0);
+          else {
+            audio.playChargeEnvelope(c, 0);
+            audio.playCardHit(true, c, 0, Math.max(0.22, getEffectiveCardCharge(c) || 0.35) * 0.82);
+          }
           setTelemetry(`${c.sfxName}`, c.sfxCategory);
           showToast(`試聽【${c.name}】音效包絡：${c.sfxName}`);
         });

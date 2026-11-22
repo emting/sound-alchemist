@@ -28,8 +28,16 @@ Options: `--allow-nonconforming` keeps files that are not 320 kbps stereo MP3
 `AudioAssetManager` in `sound_alchemist.html` fetches `manifest.json`, then each
 listed MP3 and envelope. Assets only load when the page is served over HTTP(S);
 when opened from `file://`, offline, or when a fetch/decode fails, that id falls
-back to the synthesizer. For charged cards the clip is shifted so that its loudest
-50 ms window (`peakTime`) lands on the card's peak moment (82% of the charge time).
+back to the synthesizer.
+
+- Instant (0 s) cards and relics: the MP3 replaces the synth chime and plays from its start.
+- Charged cards: the charge sound is always the synthesizer. The MP3 is the hit and starts
+  when the cast is released (`playCardHit`), not at a scheduled time. On a peak release it
+  replaces the synth chime; on an off-peak release it plays at half level under the synth
+  miss tone; on an overload misfire (never released) it does not play.
+- A hit starts at the clip's attack: the first 50 ms window that reaches half of the
+  loudest window's RMS (`attackTime`, derived from the envelope). This skips a silent or
+  quiet lead-in so the hit is not late; anything before that point is never heard.
 
 ## Envelope format
 
