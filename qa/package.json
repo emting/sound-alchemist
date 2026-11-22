@@ -1,0 +1,12 @@
+{
+  "name": "sound-alchemist-qa",
+  "private": true,
+  "description": "Playwright stress + CPU-throttled QA harness for sound_alchemist.html",
+  "scripts": {
+    "test": "playwright test",
+    "report": "node lib/summarize.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.49.1"
+  }
+}
