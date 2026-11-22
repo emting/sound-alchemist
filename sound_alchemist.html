@@ -1385,6 +1385,12 @@
       },
 
       telegraph(e, now, delay) {
+        // `now` is page time until a tick has seen the context; creating the context
+        // here switches clocks, so the cue is scheduled by the next tick instead.
+        if (!this.lastTickHadCtx) {
+          audio.init();
+          if (audio.ctx) return 0;
+        }
         const c = audio.ctx;
         const at = now + Math.max(0, delay);
         const nodes = audio.playEnemyTelegraph(e.lane, e.weakness, e.isBoss, at);
@@ -1401,7 +1407,7 @@
         const strikeAt = e.strikeAt != null ? e.strikeAt
           : (this.lastTick != null ? this.lastTick + e.attackTimer / scale : Infinity);
         if (t > strikeAt) return false;
-        return e.telegraphing || (e.cuePending && t >= e.cueAt);
+        return (e.telegraphing || e.cuePending) && t >= e.cueAt;
       },
 
       tickCast(now) {
