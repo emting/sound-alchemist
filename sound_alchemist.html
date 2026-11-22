@@ -1933,6 +1933,8 @@
         startAt: castStart,
         pressed: audioClock.inputStamp(),
         get elapsed() { return Math.max(0, audioClock.heard() - this.startAt); },
+        // Press-to-now between the input events, so a tap is not mistaken for a hold when its handler runs late.
+        get held() { return audioClock.inputTime(this) - this.startAt; },
         duration: effCharge,
         peakTime: effCharge * 0.82,
         windowSec: castWindow,
@@ -2971,7 +2973,7 @@
           initiateCardCast(index);
         });
         cardBtn.addEventListener('pointerup', (e) => {
-          if (state.activeCast && state.activeCast.handIndex === index && state.activeCast.elapsed >= 0.14) {
+          if (state.activeCast && state.activeCast.handIndex === index && state.activeCast.held >= 0.14) {
             e.preventDefault();
             releaseActiveCast();
           }
@@ -3828,7 +3830,7 @@
       updateHUD();
 
       window.addEventListener('pointerup', () => {
-        if (state.activeCast && state.activeCast.elapsed >= 0.14) {
+        if (state.activeCast && state.activeCast.held >= 0.14) {
           releaseActiveCast();
         }
       });
