@@ -2770,11 +2770,97 @@
       });
     }
 
+    // Static Spire geometry is rasterized once into two OffscreenCanvas layers (the animated
+    // core glow sits between them) and rebuilt only when canvas size, DPR, timbre or fonts change.
+    const SPIRE_BOX = { left: 48, top: 52, width: 96, height: 116 };
+    const spireCache = { base: null, top: null, w: -1, h: -1, dpr: 0, hue: '', ox: 0, oy: 0 };
+    if (document.fonts && document.fonts.addEventListener) {
+      document.fonts.addEventListener('loadingdone', () => { spireCache.w = -1; });
+    }
+
+    function createLayerCanvas(pw, ph) {
+      if (typeof OffscreenCanvas !== 'undefined') return new OffscreenCanvas(pw, ph);
+      const c = document.createElement('canvas');
+      c.width = pw;
+      c.height = ph;
+      return c;
+    }
+
+    function getSpireCache(w, h, tx, ty, primaryHue) {
+      const dpr = window.devicePixelRatio || 1;
+      const sc = spireCache;
+      if (sc.w === w && sc.h === h && sc.dpr === dpr && sc.hue === primaryHue) return sc;
+
+      const pw = Math.ceil(SPIRE_BOX.width * dpr) + 1;
+      const ph = Math.ceil(SPIRE_BOX.height * dpr) + 1;
+      if (!sc.base || sc.base.width !== pw || sc.base.height !== ph) {
+        sc.base = createLayerCanvas(pw, ph);
+        sc.top = createLayerCanvas(pw, ph);
+      }
+      // Snap the layer origin to a device pixel so the blit is 1:1 with direct drawing.
+      sc.ox = Math.floor((tx - SPIRE_BOX.left) * dpr);
+      sc.oy = Math.floor((ty - SPIRE_BOX.top) * dpr);
+
+      const b = sc.base.getContext('2d');
+      b.setTransform(1, 0, 0, 1, 0, 0);
+      b.clearRect(0, 0, pw, ph);
+      b.setTransform(dpr, 0, 0, dpr, -sc.ox, -sc.oy);
+
+      // Citadel Obsidian & Brass Base Pedestal
+      b.fillStyle = '#0f172a';
+      b.strokeStyle = primaryHue;
+      b.lineWidth = 2.5;
+      b.beginPath();
+      b.moveTo(tx - 26, ty + 38);
+      b.lineTo(tx - 18, ty - 28);
+      b.lineTo(tx, ty - 42);
+      b.lineTo(tx + 18, ty - 28);
+      b.lineTo(tx + 26, ty + 38);
+      b.closePath();
+      b.fill();
+      b.stroke();
+
+      // Floating Tuning Fork Resonator Arms
+      b.strokeStyle = '#e2e8f0';
+      b.lineWidth = 3;
+      b.beginPath();
+      b.moveTo(tx - 10, ty - 14);
+      b.lineTo(tx - 10, ty - 34);
+      b.moveTo(tx + 10, ty - 14);
+      b.lineTo(tx + 10, ty - 34);
+      b.stroke();
+
+      const t = sc.top.getContext('2d');
+      t.setTransform(1, 0, 0, 1, 0, 0);
+      t.clearRect(0, 0, pw, ph);
+      t.setTransform(dpr, 0, 0, dpr, -sc.ox, -sc.oy);
+
+      // Core Diamond
+      t.fillStyle = '#ffffff';
+      t.beginPath();
+      t.moveTo(tx, ty - 11);
+      t.lineTo(tx + 9, ty);
+      t.lineTo(tx, ty + 11);
+      t.lineTo(tx - 9, ty);
+      t.closePath();
+      t.fill();
+
+      t.fillStyle = '#fde047';
+      t.font = '900 11px "Noto Sans TC", sans-serif';
+      t.textAlign = 'center';
+      t.fillText('聲波鍊金塔', tx, ty + 54);
+
+      sc.w = w;
+      sc.h = h;
+      sc.dpr = dpr;
+      sc.hue = primaryHue;
+      return sc;
+    }
+
     // Draw Bespoke Procedural Alchemist Spire on Left
-    function drawAlchemistSpire(w, h, nowSec) {
+    function drawAlchemistSpire(w, h, nowSec, rms = audio.getLiveRMS()) {
       const tx = w * 0.115;
       const ty = h * 0.52;
-      const rms = audio.getLiveRMS();
       const isStylized = state.timbreMode === 'stylized';
       const primaryHue = isStylized ? '#ec4899' : '#f59e0b';
       const secHue = isStylized ? '#00f5d4' : '#38bdf8';
@@ -2826,29 +2912,12 @@
       }
       ctx.restore();
 
-      // 3. Citadel Obsidian & Brass Base Pedestal
-      ctx.fillStyle = '#0f172a';
-      ctx.strokeStyle = primaryHue;
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.moveTo(tx - 26, ty + 38);
-      ctx.lineTo(tx - 18, ty - 28);
-      ctx.lineTo(tx, ty - 42);
-      ctx.lineTo(tx + 18, ty - 28);
-      ctx.lineTo(tx + 26, ty + 38);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      // 4. Floating Tuning Fork Resonator Arms
-      ctx.strokeStyle = '#e2e8f0';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(tx - 10, ty - 14);
-      ctx.lineTo(tx - 10, ty - 34);
-      ctx.moveTo(tx + 10, ty - 14);
-      ctx.lineTo(tx + 10, ty - 34);
-      ctx.stroke();
+      // 3 + 4. Citadel pedestal & tuning fork arms (cached static layer)
+      const sc = getSpireCache(w, h, tx, ty, primaryHue);
+      const scDpr = sc.dpr;
+      const scX = sc.ox / scDpr, scY = sc.oy / scDpr;
+      const scW = sc.base.width / scDpr, scH = sc.base.height / scDpr;
+      ctx.drawImage(sc.base, scX, scY, scW, scH);
 
       // 5. Harmonic Core Crystal (pulses with live Audio RMS)
       const coreR = 14 + rms * 22 + Math.sin(nowSec * 5) * 1.5;
@@ -2861,20 +2930,8 @@
       ctx.arc(tx, ty, coreR * 1.4, 0, Math.PI * 2);
       ctx.fill();
 
-      // Core Diamond
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.moveTo(tx, ty - 11);
-      ctx.lineTo(tx + 9, ty);
-      ctx.lineTo(tx, ty + 11);
-      ctx.lineTo(tx - 9, ty);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.fillStyle = '#fde047';
-      ctx.font = '900 11px "Noto Sans TC", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('聲波鍊金塔', tx, ty + 54);
+      // Core Diamond + label (cached static layer)
+      ctx.drawImage(sc.top, scX, scY, scW, scH);
       ctx.restore();
     }
 
@@ -3230,18 +3287,23 @@
       ctx.restore();
 
       // 2. Dual Audio Visualizer: Bottom Frequency Spectrum + Top Time-Domain Oscilloscope
+      // The pre-allocated audio.freqData / audio.timeData Uint8Arrays are filled once per frame;
+      // the same time-domain read also feeds the Spire's RMS pulse.
+      let liveRms = 0;
       if (audio.analyser && audio.freqData && audio.timeData && !audio.muted) {
-        audio.analyser.getByteFrequencyData(audio.freqData);
-        audio.analyser.getByteTimeDomainData(audio.timeData);
+        const freqData = audio.freqData;
+        const timeData = audio.timeData;
+        audio.analyser.getByteFrequencyData(freqData);
+        audio.analyser.getByteTimeDomainData(timeData);
 
         const barCount = 56;
         const barW = w / barCount;
+        ctx.fillStyle = state.timbreMode === 'stylized'
+          ? 'rgba(236, 72, 153, 0.16)'
+          : 'rgba(245, 158, 11, 0.14)';
         for (let i = 0; i < barCount; i++) {
-          const val = audio.freqData[i] || 0;
+          const val = freqData[i] || 0;
           const barH = (val / 255) * (h * 0.34);
-          ctx.fillStyle = state.timbreMode === 'stylized'
-            ? 'rgba(236, 72, 153, 0.16)'
-            : 'rgba(245, 158, 11, 0.14)';
           ctx.fillRect(i * barW, h - barH, barW - 2, barH);
         }
 
@@ -3252,15 +3314,19 @@
           : 'rgba(56, 189, 248, 0.22)';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        const sliceW = w / audio.timeData.length;
-        for (let i = 0; i < audio.timeData.length; i++) {
-          const v = (audio.timeData[i] - 128) / 128;
+        const sampleCount = timeData.length;
+        const sliceW = w / sampleCount;
+        let sumSq = 0;
+        for (let i = 0; i < sampleCount; i++) {
+          const v = (timeData[i] - 128) / 128;
+          sumSq += v * v;
           const wy = h * 0.52 + v * 75;
           if (i === 0) ctx.moveTo(0, wy);
           else ctx.lineTo(i * sliceW, wy);
         }
         ctx.stroke();
         ctx.restore();
+        liveRms = Math.sqrt(sumSq / sampleCount);
       }
 
       // 3. Draw 3 Ornate Stereo Acoustic Tracks (L -0.8, C 0.0, R +0.8)
@@ -3304,7 +3370,7 @@
       });
 
       // 4. Draw Procedural Alchemist Spire on Left
-      drawAlchemistSpire(w, h, nowSec);
+      drawAlchemistSpire(w, h, nowSec, liveRms);
 
       // 5. Draw Soundwave Attack Beams
       for (let i = state.soundBeams.length - 1; i >= 0; i--) {
