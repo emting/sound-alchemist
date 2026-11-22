@@ -1,0 +1,251 @@
+{
+  "version": 1,
+  "windowMs": 50,
+  "expected": {
+    "cards": 30,
+    "relics": 10
+  },
+  "assets": {
+    "C01": {
+      "file": "sfx/C01.mp3",
+      "envelope": "envelopes/C01.json",
+      "duration": 2.4674,
+      "peakTime": 0.375
+    },
+    "C02": {
+      "file": "sfx/C02.mp3",
+      "envelope": "envelopes/C02.json",
+      "duration": 1.8358,
+      "peakTime": 0.025
+    },
+    "C03": {
+      "file": "sfx/C03.mp3",
+      "envelope": "envelopes/C03.json",
+      "duration": 1.5437,
+      "peakTime": 0.125
+    },
+    "C04": {
+      "file": "sfx/C04.mp3",
+      "envelope": "envelopes/C04.json",
+      "duration": 3.1757,
+      "peakTime": 0.525
+    },
+    "A01": {
+      "file": "sfx/A01.mp3",
+      "envelope": "envelopes/A01.json",
+      "duration": 0.25,
+      "peakTime": 0.025
+    },
+    "A02": {
+      "file": "sfx/A02.mp3",
+      "envelope": "envelopes/A02.json",
+      "duration": 3.9682,
+      "peakTime": 1.275
+    },
+    "A03": {
+      "file": "sfx/A03.mp3",
+      "envelope": "envelopes/A03.json",
+      "duration": 3.6642,
+      "peakTime": 1.475
+    },
+    "A04": {
+      "file": "sfx/A04.mp3",
+      "envelope": "envelopes/A04.json",
+      "duration": 3.2565,
+      "peakTime": 0.775
+    },
+    "A05": {
+      "file": "sfx/A05.mp3",
+      "envelope": "envelopes/A05.json",
+      "duration": 3.1565,
+      "peakTime": 0.275
+    },
+    "A06": {
+      "file": "sfx/A06.mp3",
+      "envelope": "envelopes/A06.json",
+      "duration": 2.9073,
+      "peakTime": 1.725
+    },
+    "A07": {
+      "file": "sfx/A07.mp3",
+      "envelope": "envelopes/A07.json",
+      "duration": 3.1419,
+      "peakTime": 0.275
+    },
+    "S01": {
+      "file": "sfx/S01.mp3",
+      "envelope": "envelopes/S01.json",
+      "duration": 3.8863,
+      "peakTime": 3.325
+    },
+    "S02": {
+      "file": "sfx/S02.mp3",
+      "envelope": "envelopes/S02.json",
+      "duration": 2.8371,
+      "peakTime": 0.325
+    },
+    "S03": {
+      "file": "sfx/S03.mp3",
+      "envelope": "envelopes/S03.json",
+      "duration": 4,
+      "peakTime": 1.825
+    },
+    "S04": {
+      "file": "sfx/S04.mp3",
+      "envelope": "envelopes/S04.json",
+      "duration": 3.0843,
+      "peakTime": 0.375
+    },
+    "S05": {
+      "file": "sfx/S05.mp3",
+      "envelope": "envelopes/S05.json",
+      "duration": 3.3657,
+      "peakTime": 0.025
+    },
+    "S06": {
+      "file": "sfx/S06.mp3",
+      "envelope": "envelopes/S06.json",
+      "duration": 3.0852,
+      "peakTime": 0.175
+    },
+    "S07": {
+      "file": "sfx/S07.mp3",
+      "envelope": "envelopes/S07.json",
+      "duration": 3.0835,
+      "peakTime": 2.275
+    },
+    "M01": {
+      "file": "sfx/M01.mp3",
+      "envelope": "envelopes/M01.json",
+      "duration": 3.5729,
+      "peakTime": 0.625
+    },
+    "M02": {
+      "file": "sfx/M02.mp3",
+      "envelope": "envelopes/M02.json",
+      "duration": 3.1361,
+      "peakTime": 0.625
+    },
+    "M03": {
+      "file": "sfx/M03.mp3",
+      "envelope": "envelopes/M03.json",
+      "duration": 4,
+      "peakTime": 1.075
+    },
+    "M04": {
+      "file": "sfx/M04.mp3",
+      "envelope": "envelopes/M04.json",
+      "duration": 3.44,
+      "peakTime": 0.675
+    },
+    "M05": {
+      "file": "sfx/M05.mp3",
+      "envelope": "envelopes/M05.json",
+      "duration": 3.0992,
+      "peakTime": 0.175
+    },
+    "M06": {
+      "file": "sfx/M06.mp3",
+      "envelope": "envelopes/M06.json",
+      "duration": 3.8017,
+      "peakTime": 1.525
+    },
+    "F01": {
+      "file": "sfx/F01.mp3",
+      "envelope": "envelopes/F01.json",
+      "duration": 0.25,
+      "peakTime": 0.025
+    },
+    "F02": {
+      "file": "sfx/F02.mp3",
+      "envelope": "envelopes/F02.json",
+      "duration": 0.3,
+      "peakTime": 0.025
+    },
+    "F03": {
+      "file": "sfx/F03.mp3",
+      "envelope": "envelopes/F03.json",
+      "duration": 0.6,
+      "peakTime": 0.025
+    },
+    "F04": {
+      "file": "sfx/F04.mp3",
+      "envelope": "envelopes/F04.json",
+      "duration": 3.1435,
+      "peakTime": 1.225
+    },
+    "F05": {
+      "file": "sfx/F05.mp3",
+      "envelope": "envelopes/F05.json",
+      "duration": 3.4303,
+      "peakTime": 1.375
+    },
+    "F06": {
+      "file": "sfx/F06.mp3",
+      "envelope": "envelopes/F06.json",
+      "duration": 3.2761,
+      "peakTime": 0.075
+    },
+    "R01": {
+      "file": "sfx/R01.mp3",
+      "envelope": "envelopes/R01.json",
+      "duration": 2.3404,
+      "peakTime": 0.275
+    },
+    "R02": {
+      "file": "sfx/R02.mp3",
+      "envelope": "envelopes/R02.json",
+      "duration": 2.4149,
+      "peakTime": 0.075
+    },
+    "R03": {
+      "file": "sfx/R03.mp3",
+      "envelope": "envelopes/R03.json",
+      "duration": 3.2477,
+      "peakTime": 0.375
+    },
+    "R04": {
+      "file": "sfx/R04.mp3",
+      "envelope": "envelopes/R04.json",
+      "duration": 3.3213,
+      "peakTime": 1.925
+    },
+    "R05": {
+      "file": "sfx/R05.mp3",
+      "envelope": "envelopes/R05.json",
+      "duration": 2.8885,
+      "peakTime": 0.125
+    },
+    "R06": {
+      "file": "sfx/R06.mp3",
+      "envelope": "envelopes/R06.json",
+      "duration": 2.8729,
+      "peakTime": 0.175
+    },
+    "R07": {
+      "file": "sfx/R07.mp3",
+      "envelope": "envelopes/R07.json",
+      "duration": 2.9929,
+      "peakTime": 1.975
+    },
+    "R08": {
+      "file": "sfx/R08.mp3",
+      "envelope": "envelopes/R08.json",
+      "duration": 3.0892,
+      "peakTime": 2.975
+    },
+    "R09": {
+      "file": "sfx/R09.mp3",
+      "envelope": "envelopes/R09.json",
+      "duration": 0.3224,
+      "peakTime": 0.075
+    },
+    "R10": {
+      "file": "sfx/R10.mp3",
+      "envelope": "envelopes/R10.json",
+      "duration": 1.5948,
+      "peakTime": 0.025
+    }
+  },
+  "missing": []
+}
