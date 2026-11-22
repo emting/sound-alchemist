@@ -1,11 +1,12 @@
 # Audio assets
 
-**No MP3 files are committed here.** `manifest.json` currently lists all 40 ids as
-`missing`, so the game plays the procedural Web Audio synthesizer for every card
-and relic. The pipeline and loader are in place; the audio itself still has to
-be supplied by someone who holds a licence to redistribute it.
+`sfx/` holds 40 MP3 files (30 cards, 10 relics) from
+[www.casper.tw/sound-effects](https://www.casper.tw/sound-effects/), with their
+50 ms RMS envelopes in `envelopes/` and the index in `manifest.json`.
+All 40 measure 320 kbps, stereo, 44.1 kHz. Source, licence terms, the id → sound
+table and known timing mismatches are in [CREDITS.md](CREDITS.md).
 
-## Adding real sound effects
+## Adding or replacing sound effects
 
 1. Put one file per card/relic in `sfx/`, named by id: `sfx/C01.mp3`, `sfx/A01.mp3`, … `sfx/F06.mp3`
    (30 cards) and `sfx/R01.mp3` … `sfx/R10.mp3` (10 relics). The ids are the `id`
