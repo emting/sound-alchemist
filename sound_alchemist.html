@@ -1069,10 +1069,18 @@
         return idx > 0 ? (idx * (env.windowMs || this.windowMs)) / 1000 : 0;
       }
 
+      // Seconds into the clip where its loudest 50ms RMS window starts.
+      loudestTime(id) {
+        const env = this.getEnvelope(id);
+        if (!env || !env.rms || !env.peakRms) return 0;
+        return (Math.max(0, env.rms.indexOf(env.peakRms)) * (env.windowMs || this.windowMs)) / 1000;
+      }
+
       // Plays the MP3 for a card/relic id at AudioContext time `when` (default: now).
       // fromAttack skips the part of the clip before attackTime(). A `when` already past
       // (a release whose handler ran late) starts now and skips up to MAX_CATCHUP of the
-      // clip, so it stays lined up with that moment. Returns false when the caller should
+      // clip, never past its loudest window, so it stays lined up with that moment and
+      // keeps its impact. Returns false when the caller should
       // use the procedural synthesizer instead.
       get MAX_CATCHUP() { return 0.1; }
 
@@ -1084,8 +1092,9 @@
           const gain = this.ctx.createGain();
           src.buffer = entry.buffer;
           const start = Math.max(when, this.ctx.currentTime);
-          const late = when > 0 ? Math.min(this.MAX_CATCHUP, start - when) : 0;
-          const offset = Math.min((fromAttack ? this.attackTime(id) : 0) + late, Math.max(0, entry.buffer.duration - 0.05));
+          const attack = fromAttack ? this.attackTime(id) : 0;
+          const late = when > 0 ? Math.min(this.MAX_CATCHUP, start - when, Math.max(0, this.loudestTime(id) - attack)) : 0;
+          const offset = Math.min(attack + late, Math.max(0, entry.buffer.duration - 0.05));
           const vol = this.gainLevel;
           if (offset > 0) {
             gain.gain.setValueAtTime(0.0001, start);
