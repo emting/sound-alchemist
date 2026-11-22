@@ -942,7 +942,7 @@
 
       init() {
         if (this.ctx) {
-          if (this.ctx.state === 'suspended') this.ctx.resume();
+          if (this.ctx.state !== 'running') audioClock.recover();
           return;
         }
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -1001,20 +1001,20 @@
         this.ambientGain = gain;
       }
 
-      playChargeEnvelope(card, panVal = 0) {
+      playChargeEnvelope(card, panVal = 0, when = 0) {
         this.init();
         if (!this.ctx || this.muted) return;
         const dur = Math.max(0.22, getEffectiveCardCharge(card) || 0.35);
-        const now = this.ctx.currentTime;
+        const now = Math.max(when, this.ctx.currentTime);
         const out = this.createPanner(panVal);
         const isStylized = state.timbreMode === 'stylized';
 
         if (card.synthType && card.synthType.startsWith('fart_')) {
-          this.playFartEnvelope(card.synthType, dur, out, isStylized);
+          this.playFartEnvelope(card.synthType, dur, out, isStylized, now);
           return;
         }
         if (card.synthType === 'sad_trombone') {
-          this.playSadTrombone(dur, out, isStylized);
+          this.playSadTrombone(dur, out, isStylized, now);
           return;
         }
 
@@ -1047,8 +1047,8 @@
         sub.stop(now + dur);
       }
 
-      playFartEnvelope(type, dur, outNode, isStylized) {
-        const now = this.ctx.currentTime;
+      playFartEnvelope(type, dur, outNode, isStylized, when = 0) {
+        const now = Math.max(when, this.ctx.currentTime);
         const osc = this.ctx.createOscillator();
         const mod = this.ctx.createOscillator();
         const modGain = this.ctx.createGain();
@@ -1102,13 +1102,14 @@
         mod.stop(now + dur);
       }
 
-      playSadTrombone(dur = 1.6, outNode = null, isStylized = false) {
+      playSadTrombone(dur = 1.6, outNode = null, isStylized = false, when = 0) {
         this.init();
-        if (!this.ctx || this.muted) return;
-        const now = this.ctx.currentTime;
+        if (!this.ctx || this.muted) return null;
+        const now = Math.max(when, this.ctx.currentTime);
         const out = outNode || this.compressor;
         const notes = [293.66, 277.18, 261.63, 246.94];
         const step = dur / 4;
+        const nodes = [];
         notes.forEach((freq, idx) => {
           const osc = this.ctx.createOscillator();
           const gain = this.ctx.createGain();
@@ -1125,7 +1126,9 @@
           gain.connect(out);
           osc.start(t0);
           osc.stop(t0 + step);
+          nodes.push(osc, gain);
         });
+        return nodes;
       }
 
       playImpactOrRelease(isPeak, card, panVal = 0) {
@@ -1201,12 +1204,12 @@
         osc.stop(now + 0.38);
       }
 
-      playEnemyTelegraph(laneIndex = 1, weakness = 'metal', isBoss = false) {
+      playEnemyTelegraph(laneIndex = 1, weakness = 'metal', isBoss = false, when = 0) {
         this.init();
-        if (!this.ctx || this.muted) return;
+        if (!this.ctx || this.muted) return null;
         const pan = laneIndex === 0 ? -0.8 : (laneIndex === 2 ? 0.8 : 0.0);
         const out = this.createPanner(pan);
-        const now = this.ctx.currentTime;
+        const now = Math.max(when, this.ctx.currentTime);
         const osc = this.ctx.createOscillator();
         const cue = this.ctx.createOscillator();
         const g = this.ctx.createGain();
@@ -1245,6 +1248,7 @@
         osc.stop(now + 0.47);
         cue.start(now + 0.08);
         cue.stop(now + 0.40);
+        return [osc, cue, g, cueG];
       }
 
       getLiveRMS() {
@@ -1260,6 +1264,236 @@
     }
 
     const audio = new SoundAlchemistAudio();
+
+    // =========================================================================
+    // 2b. AUDIO CLOCK — judgment / parry timeline anchored to audioCtx.currentTime
+    // =========================================================================
+    // All cast, overload and enemy-strike deadlines live on the AudioContext
+    // timeline. `heard()` is that timeline as the player hears it (output latency
+    // removed); inputs are judged at their event.timeStamp, so a late frame or a
+    // blocked main thread cannot move a press relative to the sound.
+    const audioClock = {
+      LOOKAHEAD: 0.12,     // s: cues are scheduled this far ahead of their deadline
+      SCHEDULE_LEAD: 0.02, // s: lead for sounds started by a player input
+      GRACE_MS: 34,        // ms: a passed deadline waits this long for queued inputs
+      TELEGRAPH_LEAD: 1.35,
+      latency: 0,
+      lastHeard: 0,
+      lastTick: null,
+      lastTickHadCtx: false,
+      runningSincePerf: 0,
+      stallRef: null,
+      lastKickPerf: 0,
+      hookedCtx: null,
+      overloadCue: null,
+      pendingCues: [],
+
+      heard() {
+        const c = audio.ctx;
+        if (!c) return performance.now() / 1000;
+        let h = c.currentTime - this.latency;
+        if (c.state === 'running') {
+          const ts = c.getOutputTimestamp ? c.getOutputTimestamp() : null;
+          const est = ts && ts.performanceTime > 0 && ts.contextTime > 0
+            ? ts.contextTime + (performance.now() - ts.performanceTime) / 1000
+            : c.currentTime - Math.min(0.5, c.outputLatency || c.baseLatency || 0);
+          const lat = c.currentTime - est;
+          if (lat >= -0.005 && lat < 0.5) {
+            this.latency = Math.max(0, lat);
+            h = est;
+          }
+        }
+        this.lastHeard = Math.max(this.lastHeard, h);
+        return this.lastHeard;
+      },
+
+      // Audio-timeline time of the input event being dispatched right now.
+      inputTime() {
+        const now = this.heard();
+        const c = audio.ctx;
+        const ev = window.event;
+        if (!ev || !(ev.timeStamp > 0) || (c && c.state !== 'running')) return now;
+        const perfNow = performance.now();
+        let age = perfNow - ev.timeStamp;
+        if (!(age >= 0 && age < 5000)) return now;
+        if (c) age = Math.min(age, perfNow - this.runningSincePerf);
+        return now - Math.max(0, age) / 1000;
+      },
+
+      // Context time at which a sound triggered by the current input starts.
+      startTime() {
+        audio.init();
+        return audio.ctx ? audio.ctx.currentTime + this.SCHEDULE_LEAD : performance.now() / 1000;
+      },
+
+      cancel(nodes) {
+        if (!nodes) return;
+        nodes.forEach(n => {
+          try { if (n.stop) n.stop(); } catch (e) {}
+          try { n.disconnect(); } catch (e) {}
+        });
+      },
+
+      recover() {
+        const c = audio.ctx;
+        if (!c || c.state === 'running' || c.state === 'closed' || document.hidden) return;
+        try {
+          const p = c.resume();
+          if (p && p.catch) p.catch(() => {});
+        } catch (e) {}
+      },
+
+      hook(c) {
+        this.hookedCtx = c;
+        this.runningSincePerf = performance.now();
+        c.addEventListener('statechange', () => {
+          if (c.state === 'running') {
+            this.runningSincePerf = performance.now();
+            return;
+          }
+          this.recover();
+          setTimeout(() => {
+            if (c.state !== 'running' && c.state !== 'closed' && !document.hidden) {
+              showToast('音訊時鐘已暫停，詠唱與判定同步凍結：請點擊畫面恢復音訊。');
+            }
+          }, 600);
+        });
+      },
+
+      // iOS Safari can report 'running' with a frozen currentTime after an interruption.
+      watchStall(c) {
+        const perfNow = performance.now();
+        const ref = this.stallRef;
+        if (c.state !== 'running' || !ref || ref.t !== c.currentTime) {
+          this.stallRef = { t: c.currentTime, perf: perfNow };
+        } else if (perfNow - ref.perf > 400 && perfNow - this.lastKickPerf > 2000) {
+          this.stallRef = null;
+          this.lastKickPerf = perfNow;
+          try {
+            c.suspend().then(() => this.recover(), () => this.recover());
+          } catch (e) {}
+        }
+      },
+
+      clearEnemy(e) {
+        e.strikeAt = null;
+        if (e.cuePending) {
+          e.cuePending = false;
+          this.cancel(e.cueNodes);
+        }
+        e.cueNodes = null;
+      },
+
+      telegraph(e, now, delay) {
+        const c = audio.ctx;
+        const at = now + Math.max(0, delay);
+        const nodes = audio.playEnemyTelegraph(e.lane, e.weakness, e.isBoss, at);
+        // A cue that could not start on time pushes the strike back by the same amount.
+        const startsAt = c && nodes ? Math.max(at, c.currentTime) : at;
+        e.cueAt = startsAt;
+        e.cueNodes = nodes;
+        e.cuePending = true;
+        return startsAt - at;
+      },
+
+      isParryOpen(e, t) {
+        const scale = state.bulletTimeRemaining > 0 ? 0.45 : 1.0;
+        const strikeAt = e.strikeAt != null ? e.strikeAt
+          : (this.lastTick != null ? this.lastTick + e.attackTimer / scale : Infinity);
+        if (t > strikeAt) return false;
+        return e.telegraphing || (e.cuePending && t >= e.cueAt);
+      },
+
+      tickCast(now) {
+        const cast = state.activeCast;
+        const cue = this.overloadCue;
+        if (cue && cue.cast !== cast) {
+          this.cancel(cue.nodes);
+          this.overloadCue = null;
+        }
+        if (!cast) return;
+        const c = audio.ctx;
+        if (c && !this.overloadCue && cast.overloadAt - c.currentTime <= this.LOOKAHEAD) {
+          this.overloadCue = {
+            cast,
+            nodes: audio.playSadTrombone(1.2, null, state.timbreMode === 'stylized', cast.overloadAt)
+          };
+        }
+        if (now <= cast.overloadAt) return;
+        if (cast.overloadSeenPerf == null) {
+          cast.overloadSeenPerf = performance.now();
+        } else if (performance.now() - cast.overloadSeenPerf >= this.GRACE_MS) {
+          commitOverloadMisfire();
+        }
+      },
+
+      tickEnemies(now, dt) {
+        const scale = state.bulletTimeRemaining > 0 ? 0.45 : 1.0;
+        state.enemies.slice().forEach(e => {
+          if (state.gameOver) return;
+          if (e.stunTimer > 0) {
+            this.clearEnemy(e);
+            return;
+          }
+          e.attackTimer -= dt * scale;
+          if (e.cuePending && now >= e.cueAt) {
+            e.cuePending = false;
+            e.telegraphing = true;
+          }
+          if (!e.telegraphing && !e.cuePending) {
+            const lead = (e.attackTimer - this.TELEGRAPH_LEAD) / scale;
+            if (lead <= this.LOOKAHEAD) {
+              e.attackTimer += this.telegraph(e, now, lead) * scale;
+            }
+          }
+          if (e.attackTimer > 0) return;
+          if (e.strikeAt == null) {
+            e.strikeAt = now + e.attackTimer / scale;
+            e.strikeSeenPerf = performance.now();
+          } else if (performance.now() - e.strikeSeenPerf >= this.GRACE_MS) {
+            this.clearEnemy(e);
+            resolveEnemyStrike(e);
+          }
+        });
+      },
+
+      tick() {
+        const c = audio.ctx;
+        if (c && this.hookedCtx !== c) this.hook(c);
+        if (document.hidden) {
+          this.lastTick = null;
+          return;
+        }
+        if (c) this.watchStall(c);
+        const now = this.heard();
+        const dt = (this.lastTick == null || this.lastTickHadCtx !== !!c) ? 0 : Math.min(0.25, Math.max(0, now - this.lastTick));
+        this.lastTick = now;
+        this.lastTickHadCtx = !!c;
+        if (state.gameOver) return;
+        this.tickCast(now);
+        this.tickEnemies(now, dt);
+      },
+
+      install() {
+        setInterval(() => this.tick(), 25);
+        const wake = () => this.recover();
+        ['pointerdown', 'pointerup', 'touchend', 'keydown', 'click'].forEach(type => {
+          window.addEventListener(type, wake, { capture: true, passive: true });
+        });
+        window.addEventListener('pageshow', wake);
+        window.addEventListener('focus', wake);
+        document.addEventListener('visibilitychange', () => {
+          const c = audio.ctx;
+          this.lastTick = null;
+          if (!c) return;
+          if (document.hidden) {
+            if (c.state === 'running') c.suspend().catch(() => {});
+          } else {
+            this.recover();
+          }
+        });
+      }
+    };
 
     // =========================================================================
     // 3. GAME STATE & CORE COMBAT ENGINE v3.0
@@ -1637,16 +1871,21 @@
         return;
       }
 
+      const castStart = audioClock.startTime();
+      const castWindow = getPeakWindowSeconds(card);
       state.activeCast = {
         card,
         handIndex,
-        elapsed: 0,
+        startAt: castStart,
+        get elapsed() { return Math.max(0, audioClock.heard() - this.startAt); },
         duration: effCharge,
         peakTime: effCharge * 0.82,
-        windowSec: getPeakWindowSeconds(card)
+        windowSec: castWindow,
+        overloadAt: castStart + effCharge + castWindow * 0.85,
+        overloadSeenPerf: null
       };
 
-      audio.playChargeEnvelope(card, pan);
+      audio.playChargeEnvelope(card, pan, castStart);
       const releaseBtn = document.getElementById('btnReleaseCast');
       if (releaseBtn) {
         releaseBtn.disabled = false;
@@ -1663,12 +1902,18 @@
 
     function releaseActiveCast() {
       if (!state.activeCast) return;
-      const { card, handIndex, elapsed, peakTime, windowSec } = state.activeCast;
-      const diff = Math.abs(elapsed - peakTime);
+      const { card, handIndex, startAt, peakTime, windowSec, overloadAt } = state.activeCast;
+      const releasedAt = audioClock.inputTime();
+      if (releasedAt > overloadAt) {
+        commitOverloadMisfire();
+        return;
+      }
+      const diff = Math.abs(Math.max(0, releasedAt - startAt) - peakTime);
       const isPeak = diff <= windowSec;
       const pan = state.selectedLane === 0 ? -0.8 : (state.selectedLane === 2 ? 0.8 : 0.0);
 
       state.activeCast = null;
+      audioClock.tickCast(releasedAt);
       state.totalCasts += 1;
       if (isPeak) {
         state.peakHits += 1;
@@ -1684,6 +1929,60 @@
       if (state.hand.length === 0) drawCardsFromPile(5);
       updateHUD();
       renderHandUI();
+    }
+
+    // Overload misfire: fired by the audio clock once `overloadAt` has passed.
+    function commitOverloadMisfire() {
+      const cast = state.activeCast;
+      if (!cast) return;
+      const cue = audioClock.overloadCue;
+      audioClock.overloadCue = null;
+      state.activeCast = null;
+      state.totalCasts += 1;
+      state.screenShake = 0.20;
+      resetReleaseButtonUI();
+      state.stunRemaining = 1.0;
+      state.combo = 0;
+      if (!cue || cue.cast !== cast || !cue.nodes) {
+        if (cue) audioClock.cancel(cue.nodes);
+        audio.playSadTrombone(1.2, null, state.timbreMode === 'stylized');
+      }
+      setTelemetry('悲傷長號 Sad Trombone + 耳鳴聲', '過載啞火懲罰');
+      spawnFloatingText(0.5, 0.25, `過載啞火! 悲傷長號響起 (耳鳴僵直 1s)`, '#f43f5e');
+      const used = state.hand.splice(cast.handIndex, 1)[0];
+      if (used) state.discardPile.push(used);
+      if (state.hand.length === 0) drawCardsFromPile(5);
+      updateHUD();
+      renderHandUI();
+    }
+
+    function resolveEnemyStrike(e) {
+      const ey = getLaneYRatio(e.lane) + (e.yOffset || 0);
+      e.telegraphing = false;
+      e.attackTimer = e.attackMax;
+      const incoming = 8 + state.act * 4 + (e.isBoss ? 6 : 0);
+      if (state.armor >= incoming) {
+        state.armor -= incoming;
+        spawnFloatingText(0.14, ey, `護盾吸收 -${incoming}`, '#38bdf8');
+      } else {
+        const rem = incoming - state.armor;
+        state.armor = 0;
+        state.hp = Math.max(0, state.hp - rem);
+        state.screenShake = 0.24;
+        spawnFloatingText(0.14, ey, `塔防受擊 -${rem}`, '#f43f5e');
+        audio.playShieldParry('metal', false);
+        if (state.hp <= 0) {
+          if (hasRelic('R06') && !state.r06ReviveUsed) {
+            state.r06ReviveUsed = true;
+            state.hp = Math.round(state.maxHp * 0.25);
+            state.armor = 15;
+            showToast('觸發【存檔點火種】每局唯一一次緊急浴火重組（回復 25% 耐久 + 15 護盾）！');
+          } else {
+            triggerGameOver(false);
+          }
+        }
+      }
+      updateHUD();
     }
 
     function resetReleaseButtonUI() {
@@ -1872,7 +2171,8 @@
 
     function handleParryInput(shieldType) {
       if (state.gameOver) return;
-      const matching = state.enemies.filter(e => e.telegraphing && e.weakness === shieldType);
+      const parryAt = audioClock.inputTime();
+      const matching = state.enemies.filter(e => e.weakness === shieldType && audioClock.isParryOpen(e, parryAt));
       if (matching.length > 0) {
         audio.playShieldParry(shieldType, true);
         state.screenShake = 0.18;
@@ -1883,6 +2183,7 @@
         }
         setTelemetry(`${SHIELD_NAMES[shieldType]} ${state.blindMode ? '盲聽完美彈反!' : '完美彈反'}`, '盾牌格擋 (93)');
         matching.forEach(e => {
+          audioClock.clearEnemy(e);
           e.telegraphing = false;
           e.attackTimer = e.attackMax;
           e.hp -= reflectDmg;
@@ -3072,26 +3373,8 @@
         state.stunRemaining = Math.max(0, state.stunRemaining - dt);
       }
 
-      if (state.activeCast) {
-        state.activeCast.elapsed += dt;
-        const { elapsed, duration, windowSec, handIndex } = state.activeCast;
-        if (elapsed > duration + windowSec * 0.85) {
-          state.activeCast = null;
-          state.totalCasts += 1;
-          state.screenShake = 0.20;
-          resetReleaseButtonUI();
-          state.stunRemaining = 1.0;
-          state.combo = 0;
-          audio.playSadTrombone(1.2, null, state.timbreMode === 'stylized');
-          setTelemetry('悲傷長號 Sad Trombone + 耳鳴聲', '過載啞火懲罰');
-          spawnFloatingText(0.5, 0.25, `過載啞火! 悲傷長號響起 (耳鳴僵直 1s)`, '#f43f5e');
-          const used = state.hand.splice(handIndex, 1)[0];
-          if (used) state.discardPile.push(used);
-          if (state.hand.length === 0) drawCardsFromPile(5);
-          updateHUD();
-          renderHandUI();
-        }
-      }
+      audioClock.tick();
+      if (state.gameOver) return;
 
       const enemyTimeScale = state.bulletTimeRemaining > 0 ? 0.45 : 1.0;
       const eDt = dt * enemyTimeScale;
@@ -3141,38 +3424,7 @@
           spawnFloatingText(e.x, ey - 0.06, `綜藝打地鼠槌! 震退+暈眩`, '#f59e0b');
         }
 
-        e.attackTimer -= eDt;
-        if (e.attackTimer <= 1.35 && !e.telegraphing) {
-          e.telegraphing = true;
-          audio.playEnemyTelegraph(e.lane, e.weakness, e.isBoss);
-        }
-        if (e.attackTimer <= 0) {
-          e.telegraphing = false;
-          e.attackTimer = e.attackMax;
-          const incoming = 8 + state.act * 4 + (e.isBoss ? 6 : 0);
-          if (state.armor >= incoming) {
-            state.armor -= incoming;
-            spawnFloatingText(0.14, ey, `護盾吸收 -${incoming}`, '#38bdf8');
-          } else {
-            const rem = incoming - state.armor;
-            state.armor = 0;
-            state.hp = Math.max(0, state.hp - rem);
-            state.screenShake = 0.24;
-            spawnFloatingText(0.14, ey, `塔防受擊 -${rem}`, '#f43f5e');
-            audio.playShieldParry('metal', false);
-            if (state.hp <= 0) {
-              if (hasRelic('R06') && !state.r06ReviveUsed) {
-                state.r06ReviveUsed = true;
-                state.hp = Math.round(state.maxHp * 0.25);
-                state.armor = 15;
-                showToast('觸發【存檔點火種】每局唯一一次緊急浴火重組（回復 25% 耐久 + 15 護盾）！');
-              } else {
-                triggerGameOver(false);
-              }
-            }
-          }
-          updateHUD();
-        }
+        // Attack countdown, telegraph and strike run on the audio clock (audioClock.tickEnemies).
       });
 
       cleanupDeadEnemies(false);
@@ -3559,9 +3811,8 @@
           if (e.stunTimer <= 0) {
             e.x = Math.max(0.20, e.x - 0.042);
             e.attackTimer = Math.max(0.15, e.attackTimer - 1.2);
-            if (e.attackTimer <= 1.35 && !e.telegraphing) {
-              e.telegraphing = true;
-              audio.playEnemyTelegraph(e.lane, e.weakness, e.isBoss);
+            if (e.attackTimer <= 1.35 && !e.telegraphing && !e.cuePending) {
+              audioClock.telegraph(e, audioClock.heard(), 0);
             }
           }
         });
@@ -3820,6 +4071,7 @@
         }
       });
 
+      audioClock.install();
       requestAnimationFrame(gameLoop);
     };
   </script>
