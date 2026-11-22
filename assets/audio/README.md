@@ -32,9 +32,9 @@ back to the synthesizer.
 
 - Instant (0 s) cards and relics: the MP3 replaces the synth chime and plays from its start.
 - Charged cards: the charge sound is always the synthesizer. The MP3 is the hit and starts
-  when the cast is released (`playCardHit`), not at a scheduled time. On a peak release it
-  replaces the synth chime; on an off-peak release it plays at half level under the synth
-  miss tone; on an overload misfire (never released) it does not play.
+  when the cast is released (`playCardHit`), not at a scheduled time. It plays only on a
+  peak release, where it replaces the synth chime. An off-peak release plays only the
+  synth miss tone, and an overload misfire (never released) plays no MP3.
 - A hit starts at the clip's attack: the first 50 ms window that reaches half of the
   loudest window's RMS (`attackTime`, derived from the envelope). This skips a silent or
   quiet lead-in so the hit is not late; anything before that point is never heard.

@@ -16,7 +16,7 @@ These files are shipped here only as part of the game. The licence page is autho
 ## Mapping
 
 Bitrate and channels are from `ffprobe`; length and peak (loudest 50 ms RMS window) are from the decoded audio.
-For charged cards the synthesizer plays the charge and the MP3 starts when the cast is released, at the first 50 ms window that reaches half of the clip's loudest window. "Hit:" notes give where in the clip that is, how long after the hit the clip is loudest, and how long it stays above 10% of its loudest window.
+For charged cards the synthesizer plays the charge and the MP3 plays only on a peak release (off-peak releases and overloads play no MP3), starting at the release from the first 50 ms window that reaches half of the clip's loudest window. "Hit:" notes give where in the clip that is, how long after the hit the clip is loudest, and how long it stays above 10% of its loudest window.
 The file name on casper.tw is `https://sound-effects.casper.tw/audio/<file>.mp3`; the link goes to the group on the category page.
 
 | id | Card / relic | casper.tw sound | File (source page) | Bitrate | Ch | Length s | Peak at s | Charge s | Notes |

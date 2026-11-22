@@ -1072,7 +1072,7 @@
       // Plays the MP3 for a card/relic id at AudioContext time `when` (default: now).
       // fromAttack skips the part of the clip before attackTime(). Returns false when
       // the caller should use the procedural synthesizer instead.
-      play(id, { out = null, when = 0, fromAttack = false, level = 1 } = {}) {
+      play(id, { out = null, when = 0, fromAttack = false } = {}) {
         const entry = this.entries.get(id);
         if (!this.ctx || !entry || !entry.buffer) return false;
         try {
@@ -1081,7 +1081,7 @@
           src.buffer = entry.buffer;
           const start = Math.max(when, this.ctx.currentTime);
           const offset = fromAttack ? Math.min(this.attackTime(id), Math.max(0, entry.buffer.duration - 0.05)) : 0;
-          const vol = this.gainLevel * level;
+          const vol = this.gainLevel;
           if (offset > 0) {
             gain.gain.setValueAtTime(0.0001, start);
             gain.gain.linearRampToValueAtTime(vol, start + 0.008);
@@ -1348,19 +1348,18 @@
         }
       }
 
-      // Charged cards keep the synth charge; the MP3 is the hit. On a peak release it replaces
-      // the synth chime, off-peak it plays at half level under the synth miss tone.
+      // Charged cards keep the synth charge; the MP3 is the hit and plays only on a peak
+      // release, where it replaces the synth chime. Off-peak releases keep the synth miss tone.
       // delaySec > 0 (codex preview) schedules the hit that far ahead; without an asset nothing is added.
       playCardHit(isPeak, card, panVal = 0, delaySec = 0) {
         this.init();
         if (!this.ctx || this.muted) return;
-        const played = audioAssets.has(card.id) && audioAssets.play(card.id, {
+        const played = isPeak && audioAssets.has(card.id) && audioAssets.play(card.id, {
           out: this.createPanner(panVal),
           when: this.ctx.currentTime + delaySec,
-          fromAttack: true,
-          level: isPeak ? 1 : 0.5
+          fromAttack: true
         });
-        if (delaySec > 0 || (played && isPeak)) return;
+        if (delaySec > 0 || played) return;
         this.playImpactOrRelease(isPeak, card, panVal);
       }
 
