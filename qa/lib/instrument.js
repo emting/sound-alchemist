@@ -154,6 +154,8 @@ module.exports = function instrument({ toleranceMs }) {
       // compares against the peak by passing the call through (return value untouched).
       const clock = gameClock();
       let releasedAt = null;
+      let inputClockAt = null;
+      let audioClockAt = null;
       // The game reads startAt before it calls inputTime(), so snapshot it at the same point.
       const startAtUsed = cast.startAt;
       let origInputTime = null;
@@ -162,6 +164,8 @@ module.exports = function instrument({ toleranceMs }) {
         clock.inputTime = function (...a) {
           const v = origInputTime.apply(this, a);
           if (releasedAt === null) releasedAt = v;
+          // Builds that time the hold twice pass the cast for the input-clock measure.
+          if (a.length > 0 && a[0]) { if (inputClockAt === null) inputClockAt = v; } else if (audioClockAt === null) audioClockAt = v;
           return v;
         };
       }
@@ -177,6 +181,11 @@ module.exports = function instrument({ toleranceMs }) {
         rec.startAtMovedAfterPressMs = cast.__qa.startAt0 === null ? null : (startAtUsed - cast.__qa.startAt0) * 1000;
         rec.startAtMovedDuringReleaseMs = (cast.startAt - startAtUsed) * 1000;
         rec.judgedSource = 'audioClock.inputTime() - activeCast.startAt';
+        if (inputClockAt !== null) {
+          rec.judgedSource = 'audioClock.inputTime(cast) - activeCast.startAt (input clock); Peak if input OR audio clock is on the peak';
+          rec.judgedInputClockMs = Math.max(0, inputClockAt - startAtUsed) * 1000;
+          rec.judgedAudioClockMs = audioClockAt === null ? null : Math.max(0, audioClockAt - startAtUsed) * 1000;
+        }
       }
       rec.judgedPeak = state.peakHits > peakHitsBefore;
       qa.casts.push(rec);

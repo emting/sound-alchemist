@@ -46,6 +46,28 @@ if (boss) {
     row('p95 abs error after removing that offset (diagnostic)', 'p95AbsResidualMs', 'ms');
     row('Max abs error after removing that offset (diagnostic)', 'maxAbsResidualMs', 'ms');
   }
+  if (p.all.extCasts) {
+    out.push('', '| Outside-the-page reference (Node clock around each input command) | All waves | Boss waves |', '|---|---|---|');
+    row('Casts with a reference', 'extCasts');
+    row('Clearly on the peak by the reference', 'extClearlyPeak');
+    row('... of those ruled a miss by the game', 'extClearlyPeakRuledMiss');
+    row('Clearly off the peak by the reference', 'extClearlyOffPeak');
+    row('... of those ruled a Peak by the game', 'extOffPeakRuledPeak');
+    row('Widest off-peak release accepted (beyond window edge)', 'extWidestAcceptedOffPeakMs', 'ms');
+    row('Too close to the window edge to call', 'extUndecided');
+    row('Verdicts contradicting the reference', 'extMismatches');
+    row('Point estimate (send-to-send): on the peak', 'extPointPeak');
+    row('... of those ruled a miss', 'extPointPeakRuledMiss');
+    row('Point estimate: off the peak', 'extPointOffPeak');
+    row('... of those ruled a Peak', 'extPointOffPeakRuledPeak');
+    row('... widest accepted (beyond window edge)', 'extPointWidestAcceptedOffPeakMs', 'ms');
+    row('Point estimate: within 5ms of the window edge', 'extPointUndecided');
+    row('Event-timestamp hold minus reference hold, median', 'eventVsExtMedianSignedMs', 'ms');
+    row('... p95 abs', 'eventVsExtP95AbsMs', 'ms');
+    row('... max abs', 'eventVsExtMaxAbsMs', 'ms');
+    row('Reference uncertainty (bracket width), median', 'extBracketWidthP50Ms', 'ms');
+    row('... p95', 'extBracketWidthP95Ms', 'ms');
+  }
   if (boss.audioClock) {
     const a = boss.audioClock; const f = (v) => (v == null ? 'n/a' : v.toFixed(4));
     out.push('', `AudioContext clock vs performance.now(): overall ${f(a.overallRate)}x (1s samples: min ${f(a.minRate)}x, max ${f(a.maxRate)}x), ${a.sampleRate}Hz, baseLatency ${a.baseLatency == null ? 'n/a' : (a.baseLatency * 1000).toFixed(1)}ms, outputLatency ${a.outputLatency == null ? 'n/a' : (a.outputLatency * 1000).toFixed(1)}ms.`);

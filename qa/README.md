@@ -45,6 +45,7 @@ must not exceed the 480px viewport and no visible, unclipped element may extend 
 | `QA_MAX_ATTEMPTS` | `6` | Campaign restarts allowed if the bot loses |
 | `QA_GAME_FILE` | `../sound_alchemist.html` | Game file to test, e.g. another branch's worktree |
 | `QA_RESULTS_DIR` | `qa/results` | Where the JSON results are written and read by `npm run report` |
+| `QA_OFFPEAK_EVERY` | `0` (off) | Make every Nth charged cast a deliberate off-peak release (15-200ms beyond the window edge) |
 | `QA_CHROMIUM_ARGS` | none | Extra Chromium flags, e.g. `--disable-audio-output` (Chromium's built-in null audio sink) |
 | `QA_AUDIO_LABEL` | none | Free-text label for the audio output setup, copied into the results |
 
@@ -66,3 +67,17 @@ The boss-playthrough result also records the audio setup (`audioSink`, via `pact
 rate of `AudioContext.currentTime` against `performance.now()` (`audioClock`), plus per cast whether the
 press created the context and whether the build moved the cast origin after the press. To run the boss
 test alone in a freshly launched browser (first AudioContext of the process): `npx playwright test -g "3 Act Bosses"`.
+
+## Reference outside the page
+
+Builds that time the hold from the press/release event timestamps subtract the same two numbers the
+±5ms check uses as its reference, so on those builds that check reads ~0ms by construction and is not
+independent evidence. The harness therefore also records Node's monotonic clock around every input
+command (sent / acknowledged). The real hold lies inside that bracket; send-to-send is the point
+estimate. The boss test fails if a verdict contradicts the whole bracket by more than 5ms; the point
+estimate, the bracket width and the difference from the event timestamps are reported.
+
+`QA_STARTUP=1 npx playwright test startup` runs `tests/startup.spec.js`: each case launches its own
+browser and makes three casts. `QA_STARTUP_OFFSETS` sets the first cast's release offset in ms, or
+`audio` to hold until the game's audio-clock elapsed time reaches the peak. `QA_SUSPEND_MS` instead
+suspends the PulseAudio sink that long during cast 3 (an audio-clock stall induced from outside the page).

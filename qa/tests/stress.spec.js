@@ -89,12 +89,12 @@ test(`3 Act Bosses under ${CPU_RATE}x CPU throttle: Peak registration within ±$
   await sleep(1500);
 
   const casts = await page.evaluate(() => window.__qa.casts);
-  const analysis = analyseCasts(casts);
+  const analysis = analyseCasts(casts, TOLERANCE_MS, attempts.flatMap((a) => a.ext));
   const result = {
     throttle,
     toleranceMs: TOLERANCE_MS,
     bossesDefeated: [...defeated].sort(),
-    attempts: attempts.map(({ overflow: _o, ...rest }) => rest),
+    attempts: attempts.map(({ overflow: _o, ext: _e, ...rest }) => rest),
     peak: { all: analysis.all, bossWaves: analysis.bossWaves },
     overflow,
     frames: await frameStats(page),
@@ -111,5 +111,7 @@ test(`3 Act Bosses under ${CPU_RATE}x CPU throttle: Peak registration within ±$
   expect.soft(analysis.all.casts, 'enough charged casts to judge accuracy').toBeGreaterThanOrEqual(30);
   expect.soft(analysis.all.maxAbsErrorMs, `worst Peak registration error (judged vs real input time) must be within ±${TOLERANCE_MS}ms`).toBeLessThanOrEqual(TOLERANCE_MS);
   expect.soft(analysis.all.verdictMismatches, `Peak/miss verdicts that contradict real input timing by more than ${TOLERANCE_MS}ms`).toBe(0);
+  // Independent of the page: verdicts against Node's clock around each input command.
+  expect.soft(analysis.all.extMismatches, `Peak/miss verdicts that contradict the outside-the-page clock by more than ${TOLERANCE_MS}ms`).toBe(0);
   for (const o of overflow) expect.soft(o, `no horizontal overflow at 480px: ${o.label}`).toMatchObject({ ok: true });
 });

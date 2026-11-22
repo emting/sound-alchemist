@@ -97,8 +97,11 @@ function percentile(sorted, p) {
 // the charge and the input event that released it (Event.timeStamp); "judged" elapsed is what
 // the game compared against the peak. A cast is a verdict mismatch when the true timing was
 // clearly (more than the tolerance) inside or outside the Peak window but the game ruled otherwise.
-function analyseCasts(casts, toleranceMs = TOLERANCE_MS) {
+function analyseCasts(casts, toleranceMs = TOLERANCE_MS, ext = []) {
+  const extByIndex = new Map(ext.filter((e) => e.released).map((e) => [e.index, e]));
   const rows = casts.map((c) => {
+    const e = extByIndex.get(c.index);
+    const x = e ? externalReference(c, e, toleranceMs) : {};
     const errorMs = c.judgedElapsedMs - c.trueElapsedMs;
     const trueOffsetMs = c.trueElapsedMs - c.peakTimeMs;
     const margin = c.windowMs - Math.abs(trueOffsetMs); // >0: truly inside the window
@@ -112,6 +115,7 @@ function analyseCasts(casts, toleranceMs = TOLERANCE_MS) {
       truePeak,
       // Error left after removing the build's designed start offset (null when there is none).
       residualMs: c.startOffsetMs == null ? null : errorMs + c.startOffsetMs,
+      ...x,
       verdictMismatch: truePeak !== c.judgedPeak && Math.abs(margin) > toleranceMs,
     };
   });
@@ -130,9 +134,75 @@ function analyseCasts(casts, toleranceMs = TOLERANCE_MS) {
       judgedPeakReleases: subset.filter((r) => r.judgedPeak).length,
       verdictMismatches: subset.filter((r) => r.verdictMismatch).length,
       ...residualStats(subset, round),
+      ...externalStats(subset, round),
     };
   };
   return { toleranceMs, rows, all: stats(rows), bossWaves: stats(rows.filter((r) => r.bossWave)) };
+}
+
+// Reference the game cannot read: Node's clock around each CDP input command. The press happened
+// between pressSend and pressAck, the release between relSend and relAck, so the real hold lies in
+// [relSend - pressAck, relAck - pressSend]; send-to-send is the point estimate.
+function externalReference(c, e, toleranceMs) {
+  const extHoldMs = e.relSend - e.pressSend;
+  const lo = e.relSend - e.pressAck;
+  const hi = e.relAck - e.pressSend;
+  const dLo = lo - c.peakTimeMs;
+  const dHi = hi - c.peakTimeMs;
+  const clearlyInside = Math.max(Math.abs(dLo), Math.abs(dHi)) <= c.windowMs - toleranceMs;
+  const clearlyOutside = dLo > c.windowMs + toleranceMs || dHi < -(c.windowMs + toleranceMs);
+  const pointIn = Math.abs(extHoldMs - c.peakTimeMs) <= c.windowMs - toleranceMs;
+  const pointOut = Math.abs(extHoldMs - c.peakTimeMs) > c.windowMs + toleranceMs;
+  // How far outside the window the whole bracket is (0 when it touches the window).
+  const outsideByMs = dLo > c.windowMs ? dLo - c.windowMs : dHi < -c.windowMs ? -c.windowMs - dHi : 0;
+  return {
+    aimMs: e.aimMs,
+    offPeakAimed: e.offPeak,
+    extHoldMs,
+    extHoldLoMs: lo,
+    extHoldHiMs: hi,
+    extOffsetMs: extHoldMs - c.peakTimeMs,
+    eventVsExtMs: c.trueElapsedMs - extHoldMs, // game's event-timestamp hold minus the outside clock's
+    extVerdict: clearlyInside ? 'peak' : clearlyOutside ? 'off-peak' : 'undecided',
+    extOutsideByMs: outsideByMs,
+    extMismatch: (clearlyInside && !c.judgedPeak) || (clearlyOutside && c.judgedPeak),
+    // Same test on the send-to-send point estimate (no proof of its error bound; diagnostic).
+    extPointVerdict: pointIn ? 'peak' : pointOut ? 'off-peak' : 'undecided',
+    extPointOutsideByMs: Math.max(0, Math.abs(extHoldMs - c.peakTimeMs) - c.windowMs),
+    extPointMismatch: (pointIn && !c.judgedPeak) || (pointOut && c.judgedPeak),
+  };
+}
+
+function externalStats(subset, round) {
+  const x = subset.filter((r) => r.extVerdict);
+  if (!x.length) return {};
+  const abs = x.map((r) => Math.abs(r.eventVsExtMs)).sort((a, b) => a - b);
+  const signed = x.map((r) => r.eventVsExtMs).sort((a, b) => a - b);
+  const width = x.map((r) => r.extHoldHiMs - r.extHoldLoMs).sort((a, b) => a - b);
+  const off = x.filter((r) => r.extVerdict === 'off-peak');
+  const accepted = off.filter((r) => r.judgedPeak);
+  return {
+    extCasts: x.length,
+    extClearlyPeak: x.filter((r) => r.extVerdict === 'peak').length,
+    extClearlyPeakRuledMiss: x.filter((r) => r.extVerdict === 'peak' && !r.judgedPeak).length,
+    extClearlyOffPeak: off.length,
+    extOffPeakRuledPeak: accepted.length,
+    extWidestAcceptedOffPeakMs: round(accepted.length ? Math.max(...accepted.map((r) => r.extOutsideByMs)) : null),
+    extUndecided: x.filter((r) => r.extVerdict === 'undecided').length,
+    extMismatches: x.filter((r) => r.extMismatch).length,
+    extPointPeak: x.filter((r) => r.extPointVerdict === 'peak').length,
+    extPointPeakRuledMiss: x.filter((r) => r.extPointVerdict === 'peak' && !r.judgedPeak).length,
+    extPointOffPeak: x.filter((r) => r.extPointVerdict === 'off-peak').length,
+    extPointOffPeakRuledPeak: x.filter((r) => r.extPointVerdict === 'off-peak' && r.judgedPeak).length,
+    extPointWidestAcceptedOffPeakMs: round(Math.max(0, ...x.filter((r) => r.extPointVerdict === 'off-peak' && r.judgedPeak).map((r) => r.extPointOutsideByMs))),
+    extPointUndecided: x.filter((r) => r.extPointVerdict === 'undecided').length,
+    eventVsExtMedianSignedMs: round(percentile(signed, 50)),
+    eventVsExtP50AbsMs: round(percentile(abs, 50)),
+    eventVsExtP95AbsMs: round(percentile(abs, 95)),
+    eventVsExtMaxAbsMs: round(abs[abs.length - 1]),
+    extBracketWidthP50Ms: round(percentile(width, 50)),
+    extBracketWidthP95Ms: round(percentile(width, 95)),
+  };
 }
 
 // Diagnostic only, never asserted on: spread of the error around its median, and the error

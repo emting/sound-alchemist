@@ -19,7 +19,7 @@ const snapshot = (page) => page.evaluate(() => {
     rewardOpen: visible('rewardModal'),
     hand: state.hand.map((c, i) => ({ i, id: c.id, cost: getEffectiveCardCost(c), charge: getEffectiveCardCharge(c), dmg: c.baseDmg || 0 })),
     enemies: state.enemies.map((e) => ({ lane: e.lane, x: e.x, hp: e.hp, isBoss: !!e.isBoss, telegraphing: !!e.telegraphing, weakness: e.weakness })),
-    cast: cast && cast.__qa ? { sinceStartMs: performance.now() - cast.__qa.t0, peakMs: cast.peakTime * 1000, windowMs: cast.windowSec * 1000 } : null,
+    cast: cast && cast.__qa ? { index: cast.__qa.index, sinceStartMs: performance.now() - cast.__qa.t0, peakMs: cast.peakTime * 1000, windowMs: cast.windowSec * 1000 } : null,
   };
 });
 
@@ -54,13 +54,23 @@ async function pickReward(page, log) {
 // some releases well inside and a few just inside the window edge.
 const AIM_PATTERN = [0, 0.45, 0, -0.45, 0, 0.9, 0, -0.9];
 
+// Deliberately off-peak releases (opt-in, QA_OFFPEAK_EVERY=N makes every Nth charged cast one):
+// ms beyond the edge of the Peak window, negative = early, positive = late.
+const OFFPEAK_EVERY = Number(process.env.QA_OFFPEAK_EVERY || 0);
+const OFFPEAK_MARGINS = [-30, 30, -80, 80, -200, 200, -15, 15];
+
+// Clock outside the page (Node, monotonic). Each input is bracketed by the time its CDP
+// command was sent and the time the browser acknowledged it.
+const extNow = () => Number(process.hrtime.bigint()) / 1e6;
+
 /**
  * Plays from the current state until victory (ACT 3 boss dead), defeat, or the time budget.
  * Returns a log of waves reached, bosses defeated and overflow checks taken along the way.
  */
 async function playRun(page, { budgetMs, onBossWave } = {}) {
   const started = Date.now();
-  const log = { bossesDefeated: [], bossesReached: [], wavesCleared: 0, rewardModalsSeen: 0, parries: 0, endTurns: 0, castsStarted: 0, rewardsTaken: 0, rewardsSkipped: 0, rewardClickRetries: 0, overflow: [], outcome: 'timeout' };
+  const log = { bossesDefeated: [], bossesReached: [], wavesCleared: 0, rewardModalsSeen: 0, parries: 0, endTurns: 0, castsStarted: 0, rewardsTaken: 0, rewardsSkipped: 0, rewardClickRetries: 0, overflow: [], ext: [], offPeakAimed: 0, outcome: 'timeout' };
+  let offPeakNo = 0;
   let castNo = 0;
   let lead = 0; // running estimate of input latency, so aimed releases land where intended
   let lastWaveKey = '';
@@ -114,7 +124,9 @@ async function playRun(page, { budgetMs, onBossWave } = {}) {
     const pos = await cardCenter(page, card.i);
     if (!pos) continue;
     await page.mouse.move(pos.x, pos.y);
+    const pressSend = extNow();
     await page.mouse.down();
+    const pressAck = extNow();
     const hold = card.charge > 0 && castNo % 2 === 1; // alternate tap + Space with hold + release
     if (!hold) await page.mouse.up();
     if (card.charge <= 0) continue;
@@ -122,8 +134,21 @@ async function playRun(page, { budgetMs, onBossWave } = {}) {
     const c = (await snapshot(page)).cast;
     if (!c) { if (hold) await page.mouse.up(); continue; }
     log.castsStarted += 1;
-    const aimMs = AIM_PATTERN[castNo % AIM_PATTERN.length] * c.windowMs;
+    let aimMs = AIM_PATTERN[castNo % AIM_PATTERN.length] * c.windowMs;
     castNo += 1;
+    let offPeak = false;
+    if (OFFPEAK_EVERY > 0 && castNo % OFFPEAK_EVERY === 0) {
+      let m = OFFPEAK_MARGINS[offPeakNo % OFFPEAK_MARGINS.length];
+      offPeakNo += 1;
+      // A late release must still land before the overload deadline (charge + 0.85 x window).
+      const lateRoom = card.charge * 1000 + 0.85 * c.windowMs - c.peakMs - c.windowMs - 60;
+      if (m > 0 && m > lateRoom) m = -m;
+      if (c.peakMs - c.windowMs + m > 120) {
+        aimMs = m > 0 ? c.windowMs + m : -c.windowMs + m;
+        offPeak = true;
+        log.offPeakAimed += 1;
+      }
+    }
 
     let remaining = c.peakMs + aimMs - c.sinceStartMs - lead;
     if (remaining > 500) {
@@ -135,9 +160,14 @@ async function playRun(page, { budgetMs, onBossWave } = {}) {
     const c2 = (await snapshot(page)).cast;
     if (c2) remaining = c2.peakMs + aimMs - c2.sinceStartMs - lead;
     await sleep(remaining);
-    if (hold) await page.mouse.up(); else await page.keyboard.press('Space');
+    const relSend = extNow();
+    if (hold) await page.mouse.up(); else await page.keyboard.down('Space');
+    const relAck = extNow();
+    if (!hold) await page.keyboard.up('Space');
 
-    const last = await page.evaluate(() => { const a = window.__qa.casts; return a[a.length - 1] || null; });
+    let last = await page.evaluate(() => { const a = window.__qa.casts; return a[a.length - 1] || null; });
+    if (last && c.index !== undefined && last.index !== c.index) last = null; // ended without this release (e.g. overload misfire)
+    log.ext.push({ index: c.index, aimMs, offPeak, released: !!last, pressSend, pressAck, relSend, relAck });
     if (last) {
       const aimError = last.trueElapsedMs - last.peakTimeMs - aimMs;
       if (Math.abs(aimError) < 150) lead = Math.max(0, Math.min(150, lead + aimError * 0.5));
@@ -147,4 +177,4 @@ async function playRun(page, { budgetMs, onBossWave } = {}) {
   return log;
 }
 
-module.exports = { playRun, snapshot };
+module.exports = { playRun, snapshot, cardCenter, extNow };
