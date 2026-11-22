@@ -1287,8 +1287,11 @@
       hookedCtx: null,
       overloadCue: null,
       pendingCues: [],
-      castAnchorPerf: null,
       rawHeard: null,
+      hasRun: false,
+      kicked: false,
+      frozenMs: 0,
+      frozenSince: null,
 
       heard() {
         const c = audio.ctx;
@@ -1313,9 +1316,37 @@
         return this.lastHeard;
       },
 
-      // Audio-timeline time of the input event being dispatched right now.
-      inputTime(startupMs = 0) {
-        this.anchorCast();
+      // The judgment timeline is frozen while the page is hidden or a context that has run
+      // is interrupted. A stalled clock on a context that still reports 'running' is not.
+      syncFrozen() {
+        const c = audio.ctx;
+        const t = performance.now();
+        if (c && c.state === 'running') this.hasRun = true, this.kicked = false;
+        const frozen = document.hidden || !!(c && this.hasRun && !this.kicked && c.state !== 'running');
+        if (frozen && this.frozenSince == null) {
+          this.frozenSince = t;
+        } else if (!frozen && this.frozenSince != null) {
+          this.frozenMs += t - this.frozenSince;
+          this.frozenSince = null;
+        }
+      },
+
+      // Page-clock time (ms) of the input being dispatched, not counting frozen time. Taken
+      // from the event's own timestamp, so neither a late handler nor an audio stall moves it.
+      inputStamp() {
+        this.syncFrozen();
+        const t = performance.now();
+        const ev = window.event;
+        const age = ev && ev.timeStamp > 0 ? t - ev.timeStamp : 0;
+        return t - (age >= 0 && age < 5000 ? age : 0)
+          - this.frozenMs - (this.frozenSince != null ? t - this.frozenSince : 0);
+      },
+
+      // Audio-timeline time of the input event being dispatched right now. With a cast, the
+      // time is its audio origin plus the hold measured between the two input timestamps,
+      // which stays right when the audio clock stalls or drops time during the cast.
+      inputTime(cast) {
+        if (cast) return cast.startAt + Math.max(0, this.inputStamp() - cast.pressed) / 1000;
         const now = this.heard();
         const c = audio.ctx;
         const ev = window.event;
@@ -1323,36 +1354,20 @@
         const perfNow = performance.now();
         let age = perfNow - ev.timeStamp;
         if (!(age >= 0 && age < 5000)) return now;
-        if (c) age = Math.min(age, perfNow - this.runningSincePerf + startupMs);
+        if (c) age = Math.min(age, perfNow - this.runningSincePerf);
         return now - Math.max(0, age) / 1000;
       },
 
       // Audio-timeline time of the input that starts a cast. The charge sound is scheduled
       // from this same origin (skipping what is already past), so the audible peak and the
-      // judged peak stay on the input however late the handler ran.
+      // judged peak stay on the input however late the handler ran. A context that is only
+      // now starting cannot place the sound on the press: it starts at the context's current
+      // time, and that is the cast's audio origin.
       startTime() {
         audio.init();
         const c = audio.ctx;
-        const ev = window.event;
-        const at = this.inputTime(500);
-        this.castAnchorPerf = c && this.rawHeard == null
-          ? (ev && ev.timeStamp > 0 ? ev.timeStamp : performance.now()) : null;
-        return at;
-      },
-
-      // A cast started before the context reported an output position: once it does, move
-      // the cast origin back onto the input that started it (start-up time counts, up to 0.5s).
-      anchorCast() {
-        const cast = state.activeCast;
-        const at = this.castAnchorPerf;
-        if (at == null) return;
-        if (!cast) { this.castAnchorPerf = null; return; }
-        this.heard();
-        if (this.rawHeard == null) return;
-        this.castAnchorPerf = null;
-        const startAt = Math.max(cast.startAt - 0.5, this.rawHeard - Math.max(0, performance.now() - at) / 1000);
-        cast.overloadAt += startAt - cast.startAt;
-        cast.startAt = startAt;
+        const at = this.inputTime();
+        return c && this.rawHeard == null ? c.currentTime : at;
       },
 
       cancel(nodes) {
@@ -1376,6 +1391,7 @@
         this.hookedCtx = c;
         this.runningSincePerf = performance.now();
         c.addEventListener('statechange', () => {
+          this.syncFrozen();
           if (c.state === 'running') {
             this.runningSincePerf = performance.now();
             return;
@@ -1398,6 +1414,7 @@
         } else if (perfNow - ref.perf > 400 && perfNow - this.lastKickPerf > 2000) {
           this.stallRef = null;
           this.lastKickPerf = perfNow;
+          this.kicked = true;
           try {
             c.suspend().then(() => this.recover(), () => this.recover());
           } catch (e) {}
@@ -1447,7 +1464,6 @@
           this.overloadCue = null;
         }
         if (!cast) return;
-        this.anchorCast();
         const c = audio.ctx;
         if (c && !this.overloadCue && cast.overloadAt - c.currentTime <= this.LOOKAHEAD) {
           this.overloadCue = {
@@ -1496,6 +1512,7 @@
       tick() {
         const c = audio.ctx;
         if (c && this.hookedCtx !== c) this.hook(c);
+        this.syncFrozen();
         if (document.hidden) {
           this.lastTick = null;
           return;
@@ -1521,6 +1538,7 @@
         document.addEventListener('visibilitychange', () => {
           const c = audio.ctx;
           this.lastTick = null;
+          this.syncFrozen();
           if (!c) return;
           if (document.hidden) {
             if (c.state === 'running') c.suspend().catch(() => {});
@@ -1913,6 +1931,7 @@
         card,
         handIndex,
         startAt: castStart,
+        pressed: audioClock.inputStamp(),
         get elapsed() { return Math.max(0, audioClock.heard() - this.startAt); },
         duration: effCharge,
         peakTime: effCharge * 0.82,
@@ -1939,12 +1958,15 @@
     function releaseActiveCast() {
       if (!state.activeCast) return;
       const { card, handIndex, startAt, peakTime, windowSec, overloadAt } = state.activeCast;
-      const releasedAt = audioClock.inputTime();
-      if (releasedAt > overloadAt) {
+      // The release is timed twice: between the press and release inputs, and on the audio
+      // clock. They differ only when the audio clock stalled; either one on the peak counts.
+      const releasedAt = audioClock.inputTime(state.activeCast);
+      const heardAt = audioClock.inputTime();
+      if (Math.min(releasedAt, heardAt) > overloadAt) {
         commitOverloadMisfire();
         return;
       }
-      const diff = Math.abs(Math.max(0, releasedAt - startAt) - peakTime);
+      const diff = Math.min(...[releasedAt, heardAt].map(t => Math.abs(Math.max(0, t - startAt) - peakTime)));
       const isPeak = diff <= windowSec;
       const pan = state.selectedLane === 0 ? -0.8 : (state.selectedLane === 2 ? 0.8 : 0.0);
 
