@@ -1005,7 +1005,7 @@
         this.init();
         if (!this.ctx || this.muted) return;
         const dur = Math.max(0.22, getEffectiveCardCharge(card) || 0.35);
-        const now = Math.max(when, this.ctx.currentTime);
+        const now = when > 0 ? when : this.ctx.currentTime;
         const out = this.createPanner(panVal);
         const isStylized = state.timbreMode === 'stylized';
 
@@ -1048,7 +1048,7 @@
       }
 
       playFartEnvelope(type, dur, outNode, isStylized, when = 0) {
-        const now = Math.max(when, this.ctx.currentTime);
+        const now = when > 0 ? when : this.ctx.currentTime;
         const osc = this.ctx.createOscillator();
         const mod = this.ctx.createOscillator();
         const modGain = this.ctx.createGain();
@@ -1105,7 +1105,7 @@
       playSadTrombone(dur = 1.6, outNode = null, isStylized = false, when = 0) {
         this.init();
         if (!this.ctx || this.muted) return null;
-        const now = Math.max(when, this.ctx.currentTime);
+        const now = when > 0 ? when : this.ctx.currentTime;
         const out = outNode || this.compressor;
         const notes = [293.66, 277.18, 261.63, 246.94];
         const step = dur / 4;
@@ -1278,7 +1278,7 @@
       GRACE_MS: 34,        // ms: a passed deadline waits this long for queued inputs
       TELEGRAPH_LEAD: 1.35,
       latency: 0,
-      lastHeard: 0,
+      lastHeard: -Infinity,
       lastTick: null,
       lastTickHadCtx: false,
       runningSincePerf: 0,
@@ -1287,20 +1287,26 @@
       hookedCtx: null,
       overloadCue: null,
       pendingCues: [],
+      castAnchorPerf: null,
+      rawHeard: null,
 
       heard() {
         const c = audio.ctx;
         if (!c) return performance.now() / 1000;
         let h = c.currentTime - this.latency;
+        this.rawHeard = null;
         if (c.state === 'running') {
           const ts = c.getOutputTimestamp ? c.getOutputTimestamp() : null;
-          const est = ts && ts.performanceTime > 0 && ts.contextTime > 0
+          const stamped = !!(ts && ts.performanceTime > 0 && ts.contextTime > 0);
+          const est = stamped
             ? ts.contextTime + (performance.now() - ts.performanceTime) / 1000
             : c.currentTime - Math.min(0.5, c.outputLatency || c.baseLatency || 0);
           const lat = c.currentTime - est;
           if (lat >= -0.005 && lat < 0.5) {
             this.latency = Math.max(0, lat);
             h = est;
+            // The first output positions after start-up are not yet steady.
+            if (stamped ? ts.contextTime > 0.05 : !c.getOutputTimestamp) this.rawHeard = est;
           }
         }
         this.lastHeard = Math.max(this.lastHeard, h);
@@ -1308,7 +1314,8 @@
       },
 
       // Audio-timeline time of the input event being dispatched right now.
-      inputTime() {
+      inputTime(startupMs = 0) {
+        this.anchorCast();
         const now = this.heard();
         const c = audio.ctx;
         const ev = window.event;
@@ -1316,14 +1323,36 @@
         const perfNow = performance.now();
         let age = perfNow - ev.timeStamp;
         if (!(age >= 0 && age < 5000)) return now;
-        if (c) age = Math.min(age, perfNow - this.runningSincePerf);
+        if (c) age = Math.min(age, perfNow - this.runningSincePerf + startupMs);
         return now - Math.max(0, age) / 1000;
       },
 
-      // Context time at which a sound triggered by the current input starts.
+      // Audio-timeline time of the input that starts a cast. The charge sound is scheduled
+      // from this same origin (skipping what is already past), so the audible peak and the
+      // judged peak stay on the input however late the handler ran.
       startTime() {
         audio.init();
-        return audio.ctx ? audio.ctx.currentTime + this.SCHEDULE_LEAD : performance.now() / 1000;
+        const c = audio.ctx;
+        const ev = window.event;
+        const at = this.inputTime(500);
+        this.castAnchorPerf = c && this.rawHeard == null
+          ? (ev && ev.timeStamp > 0 ? ev.timeStamp : performance.now()) : null;
+        return at;
+      },
+
+      // A cast started before the context reported an output position: once it does, move
+      // the cast origin back onto the input that started it (start-up time counts, up to 0.5s).
+      anchorCast() {
+        const cast = state.activeCast;
+        const at = this.castAnchorPerf;
+        if (at == null) return;
+        if (!cast) { this.castAnchorPerf = null; return; }
+        this.heard();
+        if (this.rawHeard == null) return;
+        this.castAnchorPerf = null;
+        const startAt = Math.max(cast.startAt - 0.5, this.rawHeard - Math.max(0, performance.now() - at) / 1000);
+        cast.overloadAt += startAt - cast.startAt;
+        cast.startAt = startAt;
       },
 
       cancel(nodes) {
@@ -1418,6 +1447,7 @@
           this.overloadCue = null;
         }
         if (!cast) return;
+        this.anchorCast();
         const c = audio.ctx;
         if (c && !this.overloadCue && cast.overloadAt - c.currentTime <= this.LOOKAHEAD) {
           this.overloadCue = {
