@@ -39,6 +39,14 @@ if (boss) {
   row('Releases truly inside the Peak window', 'truePeakReleases');
   row('Releases the game registered as Peak', 'judgedPeakReleases');
   row('Wrong Peak/miss verdicts', 'verdictMismatches');
+  row('Median signed error', 'medianSignedErrorMs', 'ms');
+  row('p95 deviation from median error (diagnostic)', 'p95DeviationFromMedianMs', 'ms');
+  if (p.all.medianStartOffsetMs !== null && p.all.medianStartOffsetMs !== undefined) {
+    row('Designed cast-start offset, median (diagnostic)', 'medianStartOffsetMs', 'ms');
+    row('p95 abs error after removing that offset (diagnostic)', 'p95AbsResidualMs', 'ms');
+    row('Max abs error after removing that offset (diagnostic)', 'maxAbsResidualMs', 'ms');
+  }
+  out.push('', `Judged time read from: ${[...new Set(boss.casts.map((c) => c.judgedSource))].join(', ') || 'n/a'}. Casts started: ${boss.castsStarted ?? 'n/a'}.`);
   out.push('');
 }
 console.log(out.length ? out.join('\n') : 'No results found. Run `npm test` first.');

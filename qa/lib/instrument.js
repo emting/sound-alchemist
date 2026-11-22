@@ -5,6 +5,7 @@
 module.exports = function instrument({ toleranceMs }) {
   const qa = (window.__qa = {
     casts: [],
+    castsStarted: 0,
     cpuRate: 1,
     frames: { count: 0, sumMs: 0, maxMs: 0, over33: 0, over100: 0 },
   });
@@ -31,6 +32,21 @@ module.exports = function instrument({ toleranceMs }) {
   };
   const audioTime = () => {
     try { return audio.ctx && audio.ctx.state === 'running' ? audio.ctx.currentTime : null; } catch (_) { return null; }
+  };
+
+  // Builds where judgment runs on the AudioContext clock expose a global `audioClock`.
+  const gameClock = () => {
+    try { return typeof audioClock === 'object' && audioClock && typeof audioClock.inputTime === 'function' ? audioClock : null; } catch (_) { return null; }
+  };
+  // Audio-timeline position of a page-time instant, read straight from the context (not via the game).
+  const audioTimeOf = (perfMs) => {
+    try {
+      const c = audio.ctx;
+      if (!c || c.state !== 'running' || !c.getOutputTimestamp) return null;
+      const ts = c.getOutputTimestamp();
+      if (!(ts.performanceTime > 0) || !(ts.contextTime > 0)) return null;
+      return ts.contextTime + (perfMs - ts.performanceTime) / 1000;
+    } catch (_) { return null; }
   };
 
   // On-screen readout so the recorded video shows the measurements as they are taken.
@@ -73,7 +89,14 @@ module.exports = function instrument({ toleranceMs }) {
       const cast = state.activeCast;
       if (cast && cast !== before) {
         const inp = inputTime();
-        cast.__qa = { t0: inp.t, startEvent: inp.type, handler0: performance.now(), audio0: audioTime() };
+        qa.castsStarted += 1;
+        // Audio-clock builds start the cast when the charge sound becomes audible, not at the input
+        // event. startOffsetMs is that designed gap, so the error can be split into offset + jitter.
+        const heardAtInput = typeof cast.startAt === 'number' && gameClock() ? audioTimeOf(inp.t) : null;
+        cast.__qa = {
+          t0: inp.t, startEvent: inp.type, handler0: performance.now(), audio0: audioTime(),
+          startOffsetMs: heardAtInput === null ? null : (cast.startAt - heardAtInput) * 1000,
+        };
       }
       return out;
     };
@@ -95,11 +118,36 @@ module.exports = function instrument({ toleranceMs }) {
         peakTimeMs: cast.peakTime * 1000,
         windowMs: cast.windowSec * 1000,
         judgedElapsedMs: cast.elapsed * 1000,
+        judgedSource: 'activeCast.elapsed',
+        startOffsetMs: cast.__qa.startOffsetMs,
         trueElapsedMs: inp.t - cast.__qa.t0,
         handlerElapsedMs: performance.now() - cast.__qa.handler0,
         audioElapsedMs: a1 !== null && cast.__qa.audio0 > 0 ? (a1 - cast.__qa.audio0) * 1000 : null,
       };
-      const out = origRelease.apply(this, args);
+      // Audio-clock builds judge the release on audioClock.inputTime() - cast.startAt, and
+      // activeCast.elapsed is only a display getter there. Capture the value the game really
+      // compares against the peak by passing the call through (return value untouched).
+      const clock = gameClock();
+      let releasedAt = null;
+      let origInputTime = null;
+      if (clock && typeof cast.startAt === 'number') {
+        origInputTime = clock.inputTime;
+        clock.inputTime = function (...a) {
+          const v = origInputTime.apply(this, a);
+          if (releasedAt === null) releasedAt = v;
+          return v;
+        };
+      }
+      let out;
+      try {
+        out = origRelease.apply(this, args);
+      } finally {
+        if (origInputTime) clock.inputTime = origInputTime;
+      }
+      if (releasedAt !== null) {
+        rec.judgedElapsedMs = Math.max(0, releasedAt - cast.startAt) * 1000;
+        rec.judgedSource = 'audioClock.inputTime() - activeCast.startAt';
+      }
       rec.judgedPeak = state.peakHits > peakHitsBefore;
       qa.casts.push(rec);
       renderHud();

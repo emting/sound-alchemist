@@ -2,8 +2,9 @@ const fs = require('fs');
 const path = require('path');
 const instrument = require('./instrument');
 
-const GAME_URL = 'file://' + path.resolve(__dirname, '..', '..', 'sound_alchemist.html');
-const RESULTS_DIR = path.resolve(__dirname, '..', 'results');
+// QA_GAME_FILE points the harness at another checkout's sound_alchemist.html (e.g. a PR worktree).
+const GAME_URL = 'file://' + path.resolve(process.env.QA_GAME_FILE || path.resolve(__dirname, '..', '..', 'sound_alchemist.html'));
+const RESULTS_DIR = path.resolve(process.env.QA_RESULTS_DIR || path.resolve(__dirname, '..', 'results'));
 const TOLERANCE_MS = 5;
 const CPU_RATE = Number(process.env.QA_CPU_RATE || 4);
 
@@ -109,6 +110,8 @@ function analyseCasts(casts, toleranceMs = TOLERANCE_MS) {
       judgedOffsetMs: c.judgedElapsedMs - c.peakTimeMs,
       audioErrorMs: c.audioElapsedMs === null ? null : c.judgedElapsedMs - c.audioElapsedMs,
       truePeak,
+      // Error left after removing the build's designed start offset (null when there is none).
+      residualMs: c.startOffsetMs == null ? null : errorMs + c.startOffsetMs,
       verdictMismatch: truePeak !== c.judgedPeak && Math.abs(margin) > toleranceMs,
     };
   });
@@ -126,9 +129,29 @@ function analyseCasts(casts, toleranceMs = TOLERANCE_MS) {
       truePeakReleases: subset.filter((r) => r.truePeak).length,
       judgedPeakReleases: subset.filter((r) => r.judgedPeak).length,
       verdictMismatches: subset.filter((r) => r.verdictMismatch).length,
+      ...residualStats(subset, round),
     };
   };
   return { toleranceMs, rows, all: stats(rows), bossWaves: stats(rows.filter((r) => r.bossWave)) };
+}
+
+// Diagnostic only, never asserted on: spread of the error around its median, and the error
+// with the designed start offset removed.
+function residualStats(subset, round) {
+  const signed = subset.map((r) => r.errorMs).sort((a, b) => a - b);
+  const med = percentile(signed, 50);
+  const dev = signed.map((v) => Math.abs(v - med)).sort((a, b) => a - b);
+  const res = subset.filter((r) => r.residualMs !== null).map((r) => Math.abs(r.residualMs)).sort((a, b) => a - b);
+  const off = subset.filter((r) => r.startOffsetMs != null).map((r) => r.startOffsetMs).sort((a, b) => a - b);
+  return {
+    medianSignedErrorMs: round(med),
+    p50DeviationFromMedianMs: round(percentile(dev, 50)),
+    p95DeviationFromMedianMs: round(percentile(dev, 95)),
+    medianStartOffsetMs: round(percentile(off, 50)),
+    p50AbsResidualMs: round(percentile(res, 50)),
+    p95AbsResidualMs: round(percentile(res, 95)),
+    maxAbsResidualMs: round(res.length ? res[res.length - 1] : null),
+  };
 }
 
 function writeResult(name, data) {

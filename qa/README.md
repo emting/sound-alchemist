@@ -43,7 +43,19 @@ must not exceed the 480px viewport and no visible, unclipped element may extend 
 | `QA_SIM_ITERATIONS` | `10` | Simulator executions |
 | `QA_PLAY_BUDGET_MIN` | `30` | Time budget for the boss playthrough |
 | `QA_MAX_ATTEMPTS` | `6` | Campaign restarts allowed if the bot loses |
+| `QA_GAME_FILE` | `../sound_alchemist.html` | Game file to test, e.g. another branch's worktree |
+| `QA_RESULTS_DIR` | `qa/results` | Where the JSON results are written and read by `npm run report` |
 
 Notes: the page needs network access (Tailwind CDN, Google Fonts). Frame times, and therefore timing
 results, depend on the machine. The measured throttle slowdown is written to the results; it is noisy on shared
 machines, so the test only requires it to be clearly above 1x.
+
+## Builds that judge on the AudioContext clock
+
+If the game exposes a global `audioClock` and `state.activeCast.startAt`, the judged time is read as
+`audioClock.inputTime() - activeCast.startAt` (captured by passing the game's own call through),
+because `activeCast.elapsed` is then only a display getter. The reference is unchanged: real time
+between the start and release input events, and the ±5ms checks are the same.
+
+Such builds start the cast when the charge sound becomes audible, not at the start input. The report
+shows that gap (`startOffsetMs`) and the error with it removed as diagnostics; they are never asserted on.

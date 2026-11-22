@@ -7,7 +7,7 @@
 //
 // The checks are not tuned to pass: results are written to qa/results/ either way.
 const { test, expect } = require('@playwright/test');
-const { TOLERANCE_MS, CPU_RATE, sleep, openGame, applyCpuThrottle, checkOverflow, analyseCasts, writeResult } = require('../lib/harness');
+const { GAME_URL, TOLERANCE_MS, CPU_RATE, sleep, openGame, applyCpuThrottle, checkOverflow, analyseCasts, writeResult } = require('../lib/harness');
 const { playRun } = require('../lib/bot');
 
 const SIM_ITERATIONS = Number(process.env.QA_SIM_ITERATIONS || 10);
@@ -97,6 +97,8 @@ test(`3 Act Bosses under ${CPU_RATE}x CPU throttle: Peak registration within ±$
     peak: { all: analysis.all, bossWaves: analysis.bossWaves },
     overflow,
     frames: await frameStats(page),
+    gameUrl: GAME_URL,
+    castsStarted: await page.evaluate(() => window.__qa.castsStarted),
     casts: analysis.rows,
   };
   writeResult('boss-playthrough.json', result);
