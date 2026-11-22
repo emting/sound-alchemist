@@ -925,6 +925,186 @@
     }
 
     // =========================================================================
+    // 2a. AUDIO ASSET MANAGER: REAL MP3 SFX + PRE-COMPUTED 50ms RMS ENVELOPES
+    //     (built by scripts/extract-envelopes.mjs; any id without a loaded
+    //     asset keeps using the procedural synthesizer below)
+    // =========================================================================
+    class AudioAssetManager {
+      constructor(baseUrl = 'assets/audio/') {
+        this.baseUrl = baseUrl;
+        this.status = 'idle'; // idle | loading | ready | fallback
+        this.reason = '';
+        this.windowMs = 50;
+        this.entries = new Map(); // id -> { meta, envelope, encoded, buffer }
+        this.ctx = null;
+        this._preload = null;
+        this.gainLevel = 0.6;
+        this.timeoutMs = 8000;
+      }
+
+      async _fetch(path, type) {
+        const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        const timer = ctrl ? setTimeout(() => ctrl.abort(), this.timeoutMs) : null;
+        try {
+          const res = await fetch(this.baseUrl + path, ctrl ? { signal: ctrl.signal } : undefined);
+          if (!res.ok) throw new Error(`HTTP ${res.status} for ${path}`);
+          return type === 'json' ? await res.json() : await res.arrayBuffer();
+        } finally {
+          if (timer) clearTimeout(timer);
+        }
+      }
+
+      _fallback(reason) {
+        this.status = 'fallback';
+        this.reason = reason;
+      }
+
+      // Safe to call before any user gesture: fetches only, decoding waits for attachContext().
+      preload() {
+        if (this._preload) return this._preload;
+        this._preload = (async () => {
+          if (typeof fetch !== 'function' || location.protocol === 'file:') {
+            this._fallback('file:// 無法載入音訊資產');
+            return;
+          }
+          if (navigator.onLine === false) {
+            this._fallback('離線');
+            this._retryWhenOnline();
+            return;
+          }
+          this.status = 'loading';
+          let manifest;
+          try {
+            manifest = await this._fetch('manifest.json', 'json');
+          } catch (e) {
+            this._fallback('manifest 載入失敗');
+            this._retryWhenOnline();
+            return;
+          }
+          if (manifest && manifest.windowMs) this.windowMs = manifest.windowMs;
+          const ids = Object.keys((manifest && manifest.assets) || {});
+          let failed = 0;
+          await Promise.all(ids.map(async (id) => {
+            if (this.entries.has(id)) return;
+            const meta = manifest.assets[id];
+            try {
+              const [envelope, encoded] = await Promise.all([
+                this._fetch(meta.envelope, 'json'),
+                this._fetch(meta.file, 'buffer')
+              ]);
+              if (!envelope || !Array.isArray(envelope.rms) || !envelope.rms.length) throw new Error('bad envelope');
+              this.entries.set(id, { meta, envelope, encoded, buffer: null });
+            } catch (e) {
+              failed += 1;
+            }
+          }));
+          if (this.entries.size === 0) {
+            this._fallback(ids.length ? '音訊檔載入失敗' : 'manifest 內沒有 MP3');
+          } else {
+            this.status = 'ready';
+            this.reason = '';
+          }
+          if (failed > 0) this._retryWhenOnline();
+          if (this.ctx) this._decodeAll();
+        })();
+        return this._preload;
+      }
+
+      _retryWhenOnline() {
+        if (this._retryArmed) return;
+        this._retryArmed = true;
+        window.addEventListener('online', () => {
+          this._retryArmed = false;
+          this._preload = null;
+          this.preload();
+        }, { once: true });
+      }
+
+      attachContext(ctx) {
+        if (!ctx || this.ctx === ctx) return;
+        this.ctx = ctx;
+        this._decodeAll();
+      }
+
+      _decodeAll() {
+        this.entries.forEach((entry, id) => {
+          if (entry.buffer || !entry.encoded) return;
+          const encoded = entry.encoded;
+          entry.encoded = null;
+          const done = (buffer) => { entry.buffer = buffer; };
+          const fail = () => { this.entries.delete(id); };
+          try {
+            const p = this.ctx.decodeAudioData(encoded, done, fail);
+            if (p && typeof p.catch === 'function') p.catch(() => {});
+          } catch (e) {
+            fail();
+          }
+        });
+      }
+
+      has(id) {
+        const entry = this.entries.get(id);
+        return !!(entry && entry.buffer);
+      }
+
+      getEnvelope(id) {
+        const entry = this.entries.get(id);
+        return entry ? entry.envelope : null;
+      }
+
+      // Pre-computed RMS (0..1) of the asset at tSec into the clip; null when no asset is loaded.
+      getEnvelopeLevel(id, tSec) {
+        const env = this.getEnvelope(id);
+        if (!env || tSec < 0) return env ? 0 : null;
+        const idx = Math.floor((tSec * 1000) / (env.windowMs || this.windowMs));
+        return idx < env.rms.length ? env.rms[idx] : 0;
+      }
+
+      // Plays the MP3 for a card/relic id. With peakAt (AudioContext time) the clip is
+      // shifted so its loudest 50ms window lands on that instant. Returns false when
+      // the caller should use the procedural synthesizer instead.
+      play(id, { out = null, peakAt = null } = {}) {
+        const entry = this.entries.get(id);
+        if (!this.ctx || !entry || !entry.buffer) return false;
+        try {
+          const now = this.ctx.currentTime;
+          const src = this.ctx.createBufferSource();
+          const gain = this.ctx.createGain();
+          src.buffer = entry.buffer;
+          let when = now;
+          let offset = 0;
+          if (peakAt !== null) {
+            const lead = Math.min(entry.envelope.peakTime || 0, entry.buffer.duration);
+            const start = peakAt - lead;
+            if (start >= now) when = start;
+            else offset = Math.min(now - start, Math.max(0, entry.buffer.duration - 0.05));
+          }
+          if (offset > 0) {
+            gain.gain.setValueAtTime(0.0001, when);
+            gain.gain.linearRampToValueAtTime(this.gainLevel, when + 0.008);
+          } else {
+            gain.gain.setValueAtTime(this.gainLevel, when);
+          }
+          src.connect(gain);
+          gain.connect(out || this.ctx.destination);
+          src.start(when, offset);
+          return true;
+        } catch (e) {
+          return false;
+        }
+      }
+
+      summary() {
+        let decoded = 0;
+        this.entries.forEach((entry) => { if (entry.buffer) decoded += 1; });
+        return { status: this.status, reason: this.reason, loaded: this.entries.size, decoded };
+      }
+    }
+
+    const audioAssets = new AudioAssetManager();
+    audioAssets.preload();
+
+    // =========================================================================
     // 2. WEB AUDIO API REAL-TIME SOUND & ENVELOPE SYNTHESIZER
     // =========================================================================
     class SoundAlchemistAudio {
@@ -962,6 +1142,7 @@
 
         this.compressor.connect(this.analyser);
         this.analyser.connect(this.ctx.destination);
+        audioAssets.attachContext(this.ctx);
         this.updateAmbientDrone(1);
       }
 
@@ -1009,6 +1190,8 @@
         const out = this.createPanner(panVal);
         const isStylized = state.timbreMode === 'stylized';
 
+        if (audioAssets.play(card.id, { out, peakAt: now + dur * 0.82 })) return;
+
         if (card.synthType && card.synthType.startsWith('fart_')) {
           this.playFartEnvelope(card.synthType, dur, out, isStylized);
           return;
@@ -1045,6 +1228,21 @@
         sub.start(now);
         osc.stop(now + dur);
         sub.stop(now + dur);
+      }
+
+      // Instant (0s charge) cards and relics: real MP3 when loaded, otherwise the synth chime.
+      playInstantCard(card, panVal = 0) {
+        this.init();
+        if (!this.ctx || this.muted) return;
+        if (audioAssets.has(card.id) && audioAssets.play(card.id, { out: this.createPanner(panVal) })) return;
+        this.playImpactOrRelease(true, card, panVal);
+      }
+
+      playRelic(relic) {
+        this.init();
+        if (!this.ctx || this.muted) return;
+        if (audioAssets.play(relic.id, { out: this.compressor })) return;
+        this.playImpactOrRelease(true, ALL_CARDS[0], 0);
       }
 
       playFartEnvelope(type, dur, outNode, isStylized) {
@@ -1627,7 +1825,7 @@
       if (effCharge <= 0.01) {
         state.totalCasts += 1;
         state.peakHits += 1;
-        audio.playImpactOrRelease(true, card, pan);
+        audio.playInstantCard(card, pan);
         executeCardEffect(card, true);
         const used = state.hand.splice(handIndex, 1)[0];
         if (used) state.discardPile.push(used);
@@ -2516,7 +2714,7 @@
           btn.title = `${r.name}（${r.rarity}）：${r.desc}\n對應音效：${r.sfxName}`;
           btn.innerHTML = `<span>${r.icon || '✦'}</span><span>${r.id} ${r.name}</span>`;
           btn.addEventListener('click', () => {
-            audio.playImpactOrRelease(true, ALL_CARDS[0], 0);
+            audio.playRelic(r);
             setTelemetry(`${r.sfxName}（遺物觸發音）`, `聲學遺物 · ${r.rarity}`);
             showToast(`【${r.name}】${r.desc}`);
           });
@@ -2656,7 +2854,7 @@
             </div>
           `;
           el.querySelector('.btn-preview-relic').addEventListener('click', () => {
-            audio.playImpactOrRelease(true, ALL_CARDS[0], 0);
+            audio.playRelic(r);
             setTelemetry(`${r.sfxName}`, `遺物圖鑑試聽 · ${r.id}`);
             showToast(`正在試聽遺物【${r.name}】音效：${r.sfxName}`);
           });
@@ -2708,7 +2906,7 @@
           </div>
         `;
         el.querySelector('.btn-preview-card').addEventListener('click', () => {
-          if (c.charge <= 0.01) audio.playImpactOrRelease(true, c, 0);
+          if (c.charge <= 0.01) audio.playInstantCard(c, 0);
           else audio.playChargeEnvelope(c, 0);
           setTelemetry(`${c.sfxName}`, c.sfxCategory);
           showToast(`試聽【${c.name}】音效包絡：${c.sfxName}`);
@@ -3682,7 +3880,7 @@
         state.gold -= 120;
         const picked = unowned[Math.floor(Math.random() * unowned.length)];
         state.ownedRelics.push(picked.id);
-        audio.playImpactOrRelease(true, ALL_CARDS[0], 0);
+        audio.playRelic(picked);
         setTelemetry(`${picked.sfxName}`, '黑市購入聲學遺物');
         showToast(`購入聲學遺物：【${picked.name}】！`);
         updateHUD();
