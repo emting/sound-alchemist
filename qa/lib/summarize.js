@@ -68,6 +68,15 @@ if (boss) {
     row('Reference uncertainty (bracket width), median', 'extBracketWidthP50Ms', 'ms');
     row('... p95', 'extBracketWidthP95Ms', 'ms');
   }
+  if (boss.assets) {
+    const m = boss.mp3; const g = (x, want) => `${x.mp3StartsHistogramWhenReady[want] || 0} of ${x.assetReady} started exactly ${want}`;
+    out.push('', `MP3 assets (${boss.assets.protocol}): ${boss.assets.status}${boss.assets.reason ? ` (${boss.assets.reason})` : ''}, ${boss.assets.decoded}/${boss.assets.fetched} decoded.`);
+    if (boss.assets.decoded > 0) {
+      out.push(`MP3 sources per sound (asset decoded at the time): Peak release ${g(m.peakRelease, 1)}; off-Peak release ${g(m.offPeakRelease, 0)}; overload ${g(m.overload, 0)}; instant card ${g(m.instantCard, 1)}; relic ${g(m.relic, 1)}; unattributed starts ${m.unattributedMp3Starts}.`);
+      if (m.peakStartLateMs) out.push(`Peak-release clip requested this long after the release's audio time: median ${m.peakStartLateMs.median.toFixed(1)}ms, p95 ${m.peakStartLateMs.p95.toFixed(1)}ms, max ${m.peakStartLateMs.max.toFixed(1)}ms; clip skipped to catch up: max ${m.peakCatchUpSkipMs.max.toFixed(1)}ms.`);
+    }
+    out.push(`Page errors / console errors / failed requests: ${(boss.pageErrors || []).length}.`);
+  }
   if (boss.audioClock) {
     const a = boss.audioClock; const f = (v) => (v == null ? 'n/a' : v.toFixed(4));
     out.push('', `AudioContext clock vs performance.now(): overall ${f(a.overallRate)}x (1s samples: min ${f(a.minRate)}x, max ${f(a.maxRate)}x), ${a.sampleRate}Hz, baseLatency ${a.baseLatency == null ? 'n/a' : (a.baseLatency * 1000).toFixed(1)}ms, outputLatency ${a.outputLatency == null ? 'n/a' : (a.outputLatency * 1000).toFixed(1)}ms.`);

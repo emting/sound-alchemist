@@ -137,21 +137,23 @@ test(`MP3 path over http under ${CPU_RATE}x CPU throttle: overloads, codex previ
   const revive = async () => {
     if (await page.evaluate(() => state.gameOver)) { await page.locator('#btnRestartGame').click(); await sleep(500); }
   };
+  // Test set-up only (not an input under test): a new game, so the player survives while a modal is open.
+  const freshGame = async () => { await revive(); await page.evaluate(() => restartFullGame()); await sleep(300); };
   // First cast creates the AudioContext; decoding starts there.
   steps.push(await castOnce(page, 0));
   await page.waitForFunction(() => { const a = window.__qa.assetStatus(); return a && a.fetched > 0 && a.decoded === a.fetched; }, null, { timeout: 30000 }).catch(() => {});
   const assetsAfterFirstCast = await assetStatus(page);
-  await revive();
-  await page.locator('#btnOpenCodex').click();
   const previews = {};
   for (const [key, filter, sel] of [['cards', 'all', '.btn-preview-card'], ['relics', 'relics', '.btn-preview-relic']]) {
+    await freshGame();
+    await page.locator('#btnOpenCodex').click();
     await page.locator(`.codex-tab[data-filter="${filter}"]`).click();
     const n = (previews[key] = await page.locator(sel).count());
     for (let i = 0; i < n; i++) { await page.locator(sel).nth(i).click(); await sleep(60); }
+    await sleep(key === 'cards' ? 3500 : 300); // let the scheduled preview hits start
+    await page.locator('#btnCloseCodex').click();
   }
-  await sleep(3500); // let the scheduled preview hits start
-  await page.locator('#btnCloseCodex').click();
-  await revive();
+  await freshGame();
   await page.evaluate(() => { state.gold = Math.max(state.gold, 400); }); // test set-up only: afford the relic box
   await page.locator('#btnOpenShop').click();
   const relicsBefore = await page.evaluate(() => state.ownedRelics.length);
