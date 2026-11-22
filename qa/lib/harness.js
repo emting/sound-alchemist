@@ -154,6 +154,25 @@ function residualStats(subset, round) {
   };
 }
 
+// Where the browser's audio goes during this run (diagnostic; needs PulseAudio's pactl, else null).
+function audioSinkInfo() {
+  const { execSync } = require('child_process');
+  const sh = (cmd) => { try { return execSync(cmd, { encoding: 'utf8', timeout: 5000, stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch (_) { return null; } };
+  return {
+    chromiumArgs: process.env.QA_CHROMIUM_ARGS || '',
+    label: process.env.QA_AUDIO_LABEL || '',
+    defaultSink: sh('pactl get-default-sink'),
+    sinks: sh('pactl list short sinks'),
+    sinkInputs: sh('pactl list short sink-inputs'),
+  };
+}
+
+const audioClockStats = (page) => page.evaluate(() => {
+  const a = window.__qa.audioClock;
+  const span = a.lastPerf - a.firstPerf;
+  return { ...a, overallRate: span > 0 ? (a.lastCtx - a.firstCtx) * 1000 / span : null };
+});
+
 function writeResult(name, data) {
   fs.mkdirSync(RESULTS_DIR, { recursive: true });
   const file = path.join(RESULTS_DIR, name);
@@ -161,4 +180,4 @@ function writeResult(name, data) {
   return file;
 }
 
-module.exports = { GAME_URL, RESULTS_DIR, TOLERANCE_MS, CPU_RATE, sleep, openGame, applyCpuThrottle, checkOverflow, analyseCasts, writeResult };
+module.exports = { GAME_URL, RESULTS_DIR, TOLERANCE_MS, CPU_RATE, sleep, openGame, applyCpuThrottle, checkOverflow, analyseCasts, writeResult, audioSinkInfo, audioClockStats };

@@ -7,7 +7,7 @@
 //
 // The checks are not tuned to pass: results are written to qa/results/ either way.
 const { test, expect } = require('@playwright/test');
-const { GAME_URL, TOLERANCE_MS, CPU_RATE, sleep, openGame, applyCpuThrottle, checkOverflow, analyseCasts, writeResult } = require('../lib/harness');
+const { GAME_URL, TOLERANCE_MS, CPU_RATE, sleep, openGame, applyCpuThrottle, checkOverflow, analyseCasts, writeResult, audioSinkInfo, audioClockStats } = require('../lib/harness');
 const { playRun } = require('../lib/bot');
 
 const SIM_ITERATIONS = Number(process.env.QA_SIM_ITERATIONS || 10);
@@ -85,6 +85,7 @@ test(`3 Act Bosses under ${CPU_RATE}x CPU throttle: Peak registration within ±$
     await sleep(1500);
     await page.locator('#btnRestartGame').click();
   }
+  const audioSink = audioSinkInfo(); // while the page is still producing audio
   await sleep(1500);
 
   const casts = await page.evaluate(() => window.__qa.casts);
@@ -98,6 +99,8 @@ test(`3 Act Bosses under ${CPU_RATE}x CPU throttle: Peak registration within ±$
     overflow,
     frames: await frameStats(page),
     gameUrl: GAME_URL,
+    audioSink,
+    audioClock: await audioClockStats(page),
     castsStarted: await page.evaluate(() => window.__qa.castsStarted),
     casts: analysis.rows,
   };

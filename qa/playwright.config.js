@@ -15,6 +15,7 @@ module.exports = defineConfig({
     deviceScaleFactor: 1,
     actionTimeout: 15000,
     video: { mode: 'on', size: { width: 480, height: 1800 } },
-    launchOptions: { args: ['--autoplay-policy=no-user-gesture-required'] },
+    // QA_CHROMIUM_ARGS: extra space-separated Chromium flags, e.g. --disable-audio-output.
+    launchOptions: { args: ['--autoplay-policy=no-user-gesture-required', ...(process.env.QA_CHROMIUM_ARGS || '').split(' ').filter(Boolean)] },
   },
 });

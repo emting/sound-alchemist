@@ -46,6 +46,14 @@ if (boss) {
     row('p95 abs error after removing that offset (diagnostic)', 'p95AbsResidualMs', 'ms');
     row('Max abs error after removing that offset (diagnostic)', 'maxAbsResidualMs', 'ms');
   }
+  if (boss.audioClock) {
+    const a = boss.audioClock; const f = (v) => (v == null ? 'n/a' : v.toFixed(4));
+    out.push('', `AudioContext clock vs performance.now(): overall ${f(a.overallRate)}x (1s samples: min ${f(a.minRate)}x, max ${f(a.maxRate)}x), ${a.sampleRate}Hz, baseLatency ${a.baseLatency == null ? 'n/a' : (a.baseLatency * 1000).toFixed(1)}ms, outputLatency ${a.outputLatency == null ? 'n/a' : (a.outputLatency * 1000).toFixed(1)}ms.`);
+  }
+  if (boss.audioSink) {
+    const k = boss.audioSink;
+    out.push(`Audio output: ${k.label || 'unlabelled'}; extra Chromium flags: ${k.chromiumArgs || 'none'}; PulseAudio default sink: ${k.defaultSink || 'n/a'}; browser sink-inputs during run: ${k.sinkInputs ? k.sinkInputs.split('\n').length : 0}.`);
+  }
   out.push('', `Judged time read from: ${[...new Set(boss.casts.map((c) => c.judgedSource))].join(', ') || 'n/a'}. Casts started: ${boss.castsStarted ?? 'n/a'}.`);
   out.push('');
 }

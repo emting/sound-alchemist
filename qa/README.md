@@ -45,6 +45,8 @@ must not exceed the 480px viewport and no visible, unclipped element may extend 
 | `QA_MAX_ATTEMPTS` | `6` | Campaign restarts allowed if the bot loses |
 | `QA_GAME_FILE` | `../sound_alchemist.html` | Game file to test, e.g. another branch's worktree |
 | `QA_RESULTS_DIR` | `qa/results` | Where the JSON results are written and read by `npm run report` |
+| `QA_CHROMIUM_ARGS` | none | Extra Chromium flags, e.g. `--disable-audio-output` (Chromium's built-in null audio sink) |
+| `QA_AUDIO_LABEL` | none | Free-text label for the audio output setup, copied into the results |
 
 Notes: the page needs network access (Tailwind CDN, Google Fonts). Frame times, and therefore timing
 results, depend on the machine. The measured throttle slowdown is written to the results; it is noisy on shared
@@ -59,3 +61,8 @@ between the start and release input events, and the ±5ms checks are the same.
 
 Such builds start the cast when the charge sound becomes audible, not at the start input. The report
 shows that gap (`startOffsetMs`) and the error with it removed as diagnostics; they are never asserted on.
+
+The boss-playthrough result also records the audio setup (`audioSink`, via `pactl` when available) and the
+rate of `AudioContext.currentTime` against `performance.now()` (`audioClock`), plus per cast whether the
+press created the context and whether the build moved the cast origin after the press. To run the boss
+test alone in a freshly launched browser (first AudioContext of the process): `npx playwright test -g "3 Act Bosses"`.

@@ -49,6 +49,26 @@ module.exports = function instrument({ toleranceMs }) {
     } catch (_) { return null; }
   };
 
+  // Rate of AudioContext.currentTime against performance.now(), sampled every second while running.
+  qa.audioClock = { samples: 0, firstPerf: null, firstCtx: null, lastPerf: null, lastCtx: null, minRate: null, maxRate: null, sampleRate: null, baseLatency: null, outputLatency: null };
+  setInterval(() => {
+    try {
+      const c = audio.ctx;
+      if (!c || c.state !== 'running') return;
+      const a = qa.audioClock;
+      const perf = performance.now();
+      const ctxT = c.currentTime;
+      if (a.firstPerf === null) { a.firstPerf = perf; a.firstCtx = ctxT; }
+      else if (perf - a.lastPerf > 500) {
+        const rate = (ctxT - a.lastCtx) * 1000 / (perf - a.lastPerf);
+        a.minRate = a.minRate === null ? rate : Math.min(a.minRate, rate);
+        a.maxRate = a.maxRate === null ? rate : Math.max(a.maxRate, rate);
+      }
+      a.lastPerf = perf; a.lastCtx = ctxT; a.samples += 1;
+      a.sampleRate = c.sampleRate; a.baseLatency = c.baseLatency; a.outputLatency = c.outputLatency;
+    } catch (_) {}
+  }, 1000);
+
   // On-screen readout so the recorded video shows the measurements as they are taken.
   // Fixed, non-interactive and inside the viewport, so it cannot affect input or overflow.
   let hud = null;
@@ -85,6 +105,8 @@ module.exports = function instrument({ toleranceMs }) {
 
     window.initiateCardCast = function (...args) {
       const before = state.activeCast;
+      let ctxBefore = null;
+      try { ctxBefore = audio.ctx ? audio.ctx.state : null; } catch (_) {}
       const out = origInitiate.apply(this, args);
       const cast = state.activeCast;
       if (cast && cast !== before) {
@@ -94,7 +116,7 @@ module.exports = function instrument({ toleranceMs }) {
         // event. startOffsetMs is that designed gap, so the error can be split into offset + jitter.
         const heardAtInput = typeof cast.startAt === 'number' && gameClock() ? audioTimeOf(inp.t) : null;
         cast.__qa = {
-          t0: inp.t, startEvent: inp.type, handler0: performance.now(), audio0: audioTime(),
+          t0: inp.t, startEvent: inp.type, index: qa.castsStarted, ctxBefore, startAt0: typeof cast.startAt === 'number' ? cast.startAt : null, handler0: performance.now(), audio0: audioTime(),
           startOffsetMs: heardAtInput === null ? null : (cast.startAt - heardAtInput) * 1000,
         };
       }
@@ -109,6 +131,9 @@ module.exports = function instrument({ toleranceMs }) {
       const peakHitsBefore = state.peakHits;
       const rec = {
         card: cast.card.id,
+        index: cast.__qa.index,
+        // AudioContext state just before the press: null means this press created the context.
+        ctxStateBeforePress: cast.__qa.ctxBefore,
         act: state.act,
         wave: state.wave,
         bossWave: state.wave === state.maxWaves,
@@ -129,6 +154,8 @@ module.exports = function instrument({ toleranceMs }) {
       // compares against the peak by passing the call through (return value untouched).
       const clock = gameClock();
       let releasedAt = null;
+      // The game reads startAt before it calls inputTime(), so snapshot it at the same point.
+      const startAtUsed = cast.startAt;
       let origInputTime = null;
       if (clock && typeof cast.startAt === 'number') {
         origInputTime = clock.inputTime;
@@ -145,7 +172,10 @@ module.exports = function instrument({ toleranceMs }) {
         if (origInputTime) clock.inputTime = origInputTime;
       }
       if (releasedAt !== null) {
-        rec.judgedElapsedMs = Math.max(0, releasedAt - cast.startAt) * 1000;
+        rec.judgedElapsedMs = Math.max(0, releasedAt - startAtUsed) * 1000;
+        // Non-zero when the build moved the cast origin after the press / during the release call.
+        rec.startAtMovedAfterPressMs = cast.__qa.startAt0 === null ? null : (startAtUsed - cast.__qa.startAt0) * 1000;
+        rec.startAtMovedDuringReleaseMs = (cast.startAt - startAtUsed) * 1000;
         rec.judgedSource = 'audioClock.inputTime() - activeCast.startAt';
       }
       rec.judgedPeak = state.peakHits > peakHitsBefore;
