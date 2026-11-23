@@ -10,49 +10,13 @@
 const { test, expect, chromium } = require('@playwright/test');
 const { execSync } = require('child_process');
 const { TOLERANCE_MS, CPU_RATE, sleep, openGame, applyCpuThrottle, analyseCasts, writeResult, audioSinkInfo, audioClockStats } = require('../lib/harness');
-const { snapshot, cardCenter, extNow } = require('../lib/bot');
+const { castOnce } = require('../lib/bot');
 
 const OFFSETS = (process.env.QA_STARTUP_OFFSETS || '0').split(',').map((v) => (v === 'audio' ? v : Number(v)));
 const REPS = Number(process.env.QA_STARTUP_REPS || 1);
 const SUSPEND_MS = Number(process.env.QA_SUSPEND_MS || 0);
 const ARGS = ['--autoplay-policy=no-user-gesture-required', ...(process.env.QA_CHROMIUM_ARGS || '').split(' ').filter(Boolean)];
 const pactl = (cmd) => { try { execSync(`pactl ${cmd}`, { stdio: 'ignore', timeout: 5000 }); return true; } catch (_) { return false; } };
-
-// One charged cast released `offsetMs` from its peak, timed on the outside clock only.
-async function castOnce(page, offsetMs, during) {
-  let s = await snapshot(page);
-  for (let i = 0; i < 100 && (s.stun > 0 || !s.hand.some((c) => c.charge >= 0.5 && c.cost <= s.mana)); i++) {
-    if (s.stun <= 0) await page.keyboard.press('r');
-    await sleep(150);
-    s = await snapshot(page);
-  }
-  const card = s.hand.filter((c) => c.charge >= 0.5 && c.cost <= s.mana).sort((a, b) => a.charge - b.charge)[0];
-  if (!card) return null;
-  const pos = await cardCenter(page, card.i);
-  await page.mouse.move(pos.x, pos.y);
-  const pressSend = extNow();
-  await page.mouse.down();
-  const pressAck = extNow();
-  await page.mouse.up();
-  const c = (await snapshot(page)).cast;
-  if (!c) return null;
-  if (during) await during();
-  if (offsetMs === 'audio') {
-    // Reads the game's own audio-clock elapsed time (the getter the cast UI uses every frame).
-    const audioElapsed = () => page.evaluate(() => (state.activeCast ? state.activeCast.elapsed * 1000 : null));
-    for (let e = await audioElapsed(); e !== null && e < c.peakMs - 25 && extNow() - pressSend < c.peakMs + 4000; e = await audioElapsed()) await sleep(Math.min(40, Math.max(1, c.peakMs - 25 - e)));
-  } else {
-    await sleep(c.peakMs + offsetMs - (extNow() - pressSend));
-  }
-  const relSend = extNow();
-  await page.keyboard.down('Space');
-  const relAck = extNow();
-  await page.keyboard.up('Space');
-  const last = await page.evaluate(() => { const a = window.__qa.casts; return a[a.length - 1] || null; });
-  const released = !!last && last.index === c.index;
-  const stun = (await snapshot(page)).stun;
-  return { index: c.index, aimMs: offsetMs, offPeak: offsetMs === 'audio' || Math.abs(offsetMs) > c.windowMs, released, misfired: !released && stun > 0, pressSend, pressAck, relSend, relAck };
-}
 
 test(`fresh-browser start-up / audio-stall casts under ${CPU_RATE}x CPU throttle`, async () => {
   test.skip(!process.env.QA_STARTUP, 'opt-in: set QA_STARTUP=1');

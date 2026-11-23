@@ -69,6 +69,45 @@ module.exports = function instrument({ toleranceMs }) {
     } catch (_) {}
   }, 1000);
 
+  // MP3 path (builds with a global `audioAssets`): every AudioBufferSourceNode.start() whose buffer
+  // is a decoded asset is logged against the game call that was running (release, overload, ...).
+  qa.ops = [];
+  qa.mp3Unattributed = [];
+  let currentOp = null;
+  const assets = () => { try { return typeof audioAssets === 'object' && audioAssets ? audioAssets : null; } catch (_) { return null; } };
+  const assetReady = (id) => { const a = assets(); try { return !!(a && a.has(id)); } catch (_) { return false; } };
+  const assetIdOf = (buffer) => {
+    const a = assets();
+    if (!a || !buffer || !a.entries) return null;
+    for (const [id, entry] of a.entries) if (entry.buffer === buffer) return id;
+    return null;
+  };
+  const runOp = (type, info, fn) => {
+    const prev = currentOp;
+    const op = { type, ...info, mp3: [], perf: performance.now(), parent: prev ? prev.type : null };
+    currentOp = op;
+    try { return fn(op); } finally { currentOp = prev; if (prev) { prev.mp3.push(...op.mp3); if (op.plays) (prev.plays = prev.plays || []).push(...op.plays); } qa.ops.push(op); }
+  };
+  qa.runOp = runOp;
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (Ctx && Ctx.prototype.createBufferSource) {
+    const origCreate = Ctx.prototype.createBufferSource;
+    Ctx.prototype.createBufferSource = function (...a) {
+      const src = origCreate.apply(this, a);
+      const origStart = src.start;
+      const ctx = this;
+      src.start = function (when = 0, offset = 0, ...rest) {
+        const id = assetIdOf(src.buffer);
+        if (id) {
+          const hit = { id, ctxTime: ctx.currentTime, when, offset, lateMs: when > 0 ? (ctx.currentTime - when) * 1000 : 0 };
+          (currentOp ? currentOp.mp3 : qa.mp3Unattributed).push(hit);
+        }
+        return origStart.call(this, when, offset, ...rest);
+      };
+      return src;
+    };
+  }
+
   // On-screen readout so the recorded video shows the measurements as they are taken.
   // Fixed, non-interactive and inside the viewport, so it cannot affect input or overflow.
   let hud = null;
@@ -107,7 +146,15 @@ module.exports = function instrument({ toleranceMs }) {
       const before = state.activeCast;
       let ctxBefore = null;
       try { ctxBefore = audio.ctx ? audio.ctx.state : null; } catch (_) {}
-      const out = origInitiate.apply(this, args);
+      const castsBefore = state.totalCasts;
+      let pressed = null;
+      try { pressed = state.hand[args[0]] || null; } catch (_) {}
+      const out = runOp('press', { card: pressed ? pressed.id : null, assetReady: pressed ? assetReady(pressed.id) : false }, (op) => {
+        const r = origInitiate.apply(this, args);
+        // A cast that completed inside the press without having been active before it is an instant card.
+        op.instant = !before && !state.activeCast && state.totalCasts > castsBefore;
+        return r;
+      });
       const cast = state.activeCast;
       if (cast && cast !== before) {
         const inp = inputTime();
@@ -170,8 +217,19 @@ module.exports = function instrument({ toleranceMs }) {
         };
       }
       let out;
+      const ready = assetReady(cast.card.id);
+      const opsBefore = qa.ops.length;
       try {
-        out = origRelease.apply(this, args);
+        out = runOp('release', { card: cast.card.id, index: cast.__qa.index, assetReady: ready }, (op) => {
+          const r = origRelease.apply(this, args);
+          op.judgedPeak = state.peakHits > peakHitsBefore;
+          op.overload = qa.ops.slice(opsBefore).some((o) => o.type === 'overload');
+          rec.mp3Starts = op.mp3.length;
+          rec.mp3 = op.mp3;
+          rec.assetReady = ready;
+          rec.overloadOnRelease = op.overload;
+          return r;
+        });
       } finally {
         if (origInputTime) clock.inputTime = origInputTime;
       }
@@ -191,6 +249,49 @@ module.exports = function instrument({ toleranceMs }) {
       qa.casts.push(rec);
       renderHud();
       return out;
+    };
+    // Overload misfire (from the game loop, or from a release past the deadline).
+    const origMisfire = window.commitOverloadMisfire;
+    if (typeof origMisfire === 'function') {
+      window.commitOverloadMisfire = function (...args) {
+        const c = state.activeCast;
+        if (!c) return origMisfire.apply(this, args);
+        return runOp('overload', { card: c.card.id, index: c.__qa ? c.__qa.index : null, assetReady: assetReady(c.card.id) }, () => origMisfire.apply(this, args));
+      };
+    }
+    // Sound entry points that are also called straight from click handlers (codex previews, relics).
+    try {
+      for (const [name, type] of [['playRelic', 'relic'], ['playInstantCard', 'instantSound'], ['playCardHit', 'cardHitSound']]) {
+        const orig = audio[name];
+        if (typeof orig !== 'function') continue;
+        audio[name] = function (...args) {
+          const item = name === 'playCardHit' ? args[1] : args[0];
+          const id = item && item.id;
+          return runOp(type, { card: id, assetReady: assetReady(id), wantsPeak: name === 'playCardHit' ? !!args[0] : true }, () => orig.apply(this, args));
+        };
+      }
+    } catch (_) {}
+    // What the game asked the asset player for: the requested start time against the context
+    // clock (how late the call was) and whether a clip was actually started.
+    try {
+      const a = assets();
+      if (a && typeof a.play === 'function') {
+        const origPlay = a.play;
+        a.play = function (id, opts = {}) {
+          const ctxTime = this.ctx ? this.ctx.currentTime : null;
+          const out = origPlay.call(this, id, opts);
+          const call = { id, when: opts.when || 0, ctxTime, requestedLateMs: opts.when > 0 && ctxTime !== null ? (ctxTime - opts.when) * 1000 : null, fromAttack: !!opts.fromAttack, attackMs: opts.fromAttack && typeof this.attackTime === 'function' ? this.attackTime(id) * 1000 : 0, returned: out };
+          if (currentOp) (currentOp.plays = currentOp.plays || []).push(call);
+          return out;
+        };
+      }
+    } catch (_) {}
+    qa.assetStatus = () => {
+      const a = assets();
+      if (!a) return null;
+      let decoded = 0;
+      a.entries.forEach((e) => { if (e.buffer) decoded += 1; });
+      return { status: a.status, reason: a.reason, fetched: a.entries.size, decoded, protocol: location.protocol };
     };
     qa.hooked = true;
   });

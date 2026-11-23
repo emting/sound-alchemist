@@ -46,6 +46,7 @@ must not exceed the 480px viewport and no visible, unclipped element may extend 
 | `QA_GAME_FILE` | `../sound_alchemist.html` | Game file to test, e.g. another branch's worktree |
 | `QA_RESULTS_DIR` | `qa/results` | Where the JSON results are written and read by `npm run report` |
 | `QA_OFFPEAK_EVERY` | `0` (off) | Make every Nth charged cast a deliberate off-peak release (15-200ms beyond the window edge) |
+| `QA_HTTP` | off | `1` serves the game's directory over `http://127.0.0.1` so the MP3 assets load (they are not fetched on `file://`) |
 | `QA_CHROMIUM_ARGS` | none | Extra Chromium flags, e.g. `--disable-audio-output` (Chromium's built-in null audio sink) |
 | `QA_AUDIO_LABEL` | none | Free-text label for the audio output setup, copied into the results |
 
@@ -81,3 +82,19 @@ estimate, the bracket width and the difference from the event timestamps are rep
 browser and makes three casts. `QA_STARTUP_OFFSETS` sets the first cast's release offset in ms, or
 `audio` to hold until the game's audio-clock elapsed time reaches the peak. `QA_SUSPEND_MS` instead
 suspends the PulseAudio sink that long during cast 3 (an audio-clock stall induced from outside the page).
+
+## MP3 path (`QA_HTTP=1`)
+
+On `file://` the game falls back to the synthesizer, so the MP3 code never runs. With `QA_HTTP=1` the
+harness serves the game over HTTP, waits for the asset fetches, and logs every
+`AudioBufferSourceNode.start()` whose buffer is a decoded asset against the game call that was running.
+The boss test then also fails unless 40/40 assets decoded and, for sounds whose asset was decoded:
+Peak release started exactly 1 MP3, off-Peak release 0, overload 0, instant card 1, relic 1, with no
+unattributed starts. A third test (`MP3 path ...`) covers what the campaign bot rarely triggers:
+overload misfires (held past the deadline and released just past it), codex previews of all 30 cards
+and 10 relics, and a shop relic purchase. That test restarts the game and sets gold through
+`page.evaluate` as set-up; the sounds themselves are triggered by real clicks and keys.
+
+All tests now also fail on page errors, console errors and failed or 4xx/5xx requests.
+The simulator test checks 10 executions x 10 rows x 18 waves; it does not require every run to be a
+full clear (the simulator shuffles its deck with `Math.random`).
