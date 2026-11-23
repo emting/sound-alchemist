@@ -1069,9 +1069,21 @@
         return idx > 0 ? (idx * (env.windowMs || this.windowMs)) / 1000 : 0;
       }
 
+      // Seconds into the clip where its loudest 50ms RMS window starts.
+      loudestTime(id) {
+        const env = this.getEnvelope(id);
+        if (!env || !env.rms || !env.peakRms) return 0;
+        return (Math.max(0, env.rms.indexOf(env.peakRms)) * (env.windowMs || this.windowMs)) / 1000;
+      }
+
       // Plays the MP3 for a card/relic id at AudioContext time `when` (default: now).
-      // fromAttack skips the part of the clip before attackTime(). Returns false when
-      // the caller should use the procedural synthesizer instead.
+      // fromAttack skips the part of the clip before attackTime(). A `when` already past
+      // (a release whose handler ran late) starts now and skips up to MAX_CATCHUP of the
+      // clip, never past its loudest window, so it stays lined up with that moment and
+      // keeps its impact. Returns false when the caller should
+      // use the procedural synthesizer instead.
+      get MAX_CATCHUP() { return 0.1; }
+
       play(id, { out = null, when = 0, fromAttack = false } = {}) {
         const entry = this.entries.get(id);
         if (!this.ctx || !entry || !entry.buffer) return false;
@@ -1080,7 +1092,9 @@
           const gain = this.ctx.createGain();
           src.buffer = entry.buffer;
           const start = Math.max(when, this.ctx.currentTime);
-          const offset = fromAttack ? Math.min(this.attackTime(id), Math.max(0, entry.buffer.duration - 0.05)) : 0;
+          const attack = fromAttack ? this.attackTime(id) : 0;
+          const late = when > 0 ? Math.min(this.MAX_CATCHUP, start - when, Math.max(0, this.loudestTime(id) - attack)) : 0;
+          const offset = Math.min(attack + late, Math.max(0, entry.buffer.duration - 0.05));
           const vol = this.gainLevel;
           if (offset > 0) {
             gain.gain.setValueAtTime(0.0001, start);
@@ -1354,12 +1368,13 @@
       // Charged cards keep the synth charge; the MP3 is the hit and plays only on a peak
       // release, where it replaces the synth chime. Off-peak releases keep the synth miss tone.
       // delaySec > 0 (codex preview) schedules the hit that far ahead; without an asset nothing is added.
-      playCardHit(isPeak, card, panVal = 0, delaySec = 0) {
+      // `when` is the AudioContext time of the release input; 0 means now.
+      playCardHit(isPeak, card, panVal = 0, delaySec = 0, when = 0) {
         this.init();
         if (!this.ctx || this.muted) return;
         const played = isPeak && audioAssets.has(card.id) && audioAssets.play(card.id, {
           out: this.createPanner(panVal),
-          when: this.ctx.currentTime + delaySec,
+          when: (when > 0 ? when : this.ctx.currentTime) + delaySec,
           fromAttack: true
         });
         if (delaySec > 0 || played) return;
@@ -2195,7 +2210,7 @@
       }
       resetReleaseButtonUI();
 
-      audio.playCardHit(isPeak, card, pan);
+      audio.playCardHit(isPeak, card, pan, 0, heardAt + audioClock.latency);
       executeCardEffect(card, isPeak);
 
       const used = state.hand.splice(handIndex, 1)[0];
