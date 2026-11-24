@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>《聲波鍊金術士》Audio-Synced Combat v3.0｜音訊同步 Roguelike 塔防網頁遊戲</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230f172a'/><path d='M4 16h4l3-8 4 16 4-12 3 4h6' fill='none' stroke='%23f59e0b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/></svg>">
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -272,8 +273,15 @@
     <section class="relative w-full bg-slate-950 border-2 border-slate-800/90 rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.85)]" style="height: 380px;">
       <canvas id="battleCanvas" class="w-full h-full block cursor-pointer"></canvas>
 
+      <!-- Top-Center Boss Alert Banner -->
+      <div id="bossAlertBanner" class="hidden absolute top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-rose-950/95 via-purple-950/95 to-rose-950/95 border border-rose-400/70 px-4 py-1.5 rounded-full text-xs font-black text-rose-200 shadow-[0_0_25px_rgba(244,63,94,0.45)] z-10 items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-rose-400 animate-ping"></span>
+        <span id="bossAlertText">ACT BOSS 登場：聲學干擾生效中</span>
+      </div>
+
       <!-- Top-Left Stereo Lane Selector Console -->
-      <div class="absolute top-3 left-3 flex items-center gap-1.5 bg-slate-950/85 backdrop-blur-xl border border-slate-700/80 rounded-xl p-1.5 z-10 shadow-xl">
+      <div class="absolute top-3 inset-x-3 z-10 flex flex-wrap items-start justify-between gap-2 pointer-events-none">
+      <div class="flex items-center gap-1.5 bg-slate-950/85 backdrop-blur-xl border border-slate-700/80 rounded-xl p-1.5 z-10 shadow-xl pointer-events-auto">
         <span class="text-[11px] text-slate-300 px-1.5 font-bold">立體聲軌：</span>
         <button id="btnLane0" type="button" class="lane-btn px-2.5 py-1 rounded-lg text-xs font-mono-code font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
           [1] 左聲道 L (-0.8)
@@ -286,14 +294,8 @@
         </button>
       </div>
 
-      <!-- Top-Center Boss Alert Banner -->
-      <div id="bossAlertBanner" class="hidden absolute top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-rose-950/95 via-purple-950/95 to-rose-950/95 border border-rose-400/70 px-4 py-1.5 rounded-full text-xs font-black text-rose-200 shadow-[0_0_25px_rgba(244,63,94,0.45)] z-10 items-center gap-2">
-        <span class="w-2.5 h-2.5 rounded-full bg-rose-400 animate-ping"></span>
-        <span id="bossAlertText">ACT BOSS 登場：聲學干擾生效中</span>
-      </div>
-
       <!-- Top-Right Live Sound Effect Oscilloscope & Telemetry Readout -->
-      <div class="absolute top-3 right-3 bg-slate-950/88 backdrop-blur-xl border border-slate-700/80 rounded-xl px-3.5 py-2 text-right z-10 max-w-xs shadow-xl">
+      <div class="ml-auto bg-slate-950/88 backdrop-blur-xl border border-slate-700/80 rounded-xl px-3.5 py-2 text-right z-10 max-w-xs shadow-xl pointer-events-auto">
         <div class="text-[10px] font-mono-code text-slate-400 flex items-center justify-end gap-2">
           <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
           <span>即時音訊包絡遙測</span>
@@ -302,9 +304,11 @@
         <div id="telemetrySoundName" class="text-xs font-extrabold text-amber-300 truncate mt-0.5">待機中（點擊卡牌開始詠唱）</div>
         <div id="telemetryCategory" class="text-[10px] text-sky-400 truncate">分類：太空船 / 幽暗地牢環境音</div>
       </div>
+      </div>
 
       <!-- Bottom-Left Stereo Telegraph Parry Shields -->
-      <div class="absolute bottom-3 left-3 flex flex-wrap items-center gap-1.5 bg-slate-950/90 backdrop-blur-xl border border-slate-700/80 rounded-xl p-1.5 z-10 shadow-xl">
+      <div class="absolute bottom-3 inset-x-3 z-10 flex flex-wrap-reverse items-end justify-between gap-2 pointer-events-none">
+      <div class="flex flex-wrap items-center gap-1.5 bg-slate-950/90 backdrop-blur-xl border border-slate-700/80 rounded-xl p-1.5 z-10 shadow-xl pointer-events-auto">
         <span class="text-[11px] text-slate-200 font-bold px-1.5">聽音調諧舉盾：</span>
         <button id="btnParryMetal" type="button" class="px-3 py-1.5 rounded-lg text-xs font-black bg-gradient-to-b from-amber-500/25 to-slate-900 hover:brightness-125 text-amber-300 border border-amber-400/60 transition flex items-center gap-1 shadow-sm">
           <span>[Q] 金屬格擋</span>
@@ -318,13 +322,14 @@
       </div>
 
       <!-- Bottom-Right Peak Release Action Button & Next Turn -->
-      <div class="absolute bottom-3 right-3 flex items-center gap-2 z-10">
+      <div class="ml-auto flex items-center gap-2 z-10 pointer-events-auto">
         <button id="btnReleaseCast" type="button" disabled class="px-4 py-2 rounded-xl text-xs sm:text-sm font-black tracking-wide bg-slate-900/90 text-slate-500 border border-slate-700/80 shadow-xl transition-all">
           [空白鍵 / 點擊畫面] 峰值釋放 (PEAK RELEASE)
         </button>
         <button id="btnEndTurn" type="button" class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-black bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white border border-indigo-400/60 shadow-xl transition">
           重抽換牌 / 下一波 [R]
         </button>
+      </div>
       </div>
     </section>
 
@@ -556,7 +561,7 @@
       </div>
 
       <!-- Codex Content Scroll Area -->
-      <div id="codexGridContainer" class="p-5 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 flex-1"></div>
+      <div id="codexGridContainer" class="p-5 overflow-y-auto grid auto-rows-max grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 flex-1"></div>
     </div>
   </div>
 
