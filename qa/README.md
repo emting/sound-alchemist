@@ -86,14 +86,28 @@ suspends the PulseAudio sink that long during cast 3 (an audio-clock stall induc
 ## MP3 path (`QA_HTTP=1`)
 
 On `file://` the game falls back to the synthesizer, so the MP3 code never runs. With `QA_HTTP=1` the
-harness serves the game over HTTP, waits for the asset fetches, and logs every
+harness serves the game over HTTP, waits for initial asset readiness, and logs every
 `AudioBufferSourceNode.start()` whose buffer is a decoded asset against the game call that was running.
-The boss test then also fails unless 40/40 assets decoded and, for sounds whose asset was decoded:
+The manifest loads first, then the current hand/deck and owned relics. Other assets load at idle
+or jump the queue when requested by a play/preview. The first audio gesture enables decoding.
+`audioAssets.summary()` reports available audio/envelope pairs as `loaded` (`fetched` in QA) and
+usable buffers as `decoded`; both can be below 40 at startup. A sound that hasn't decoded uses the
+procedural path for that play. By the end of the boss test all 40 assets should have decoded. For
+sounds whose asset was decoded the test expects:
 Peak release started exactly 1 MP3, off-Peak release 0, overload 0, instant card 1, relic 1, with no
 unattributed starts. A third test (`MP3 path ...`) covers what the campaign bot rarely triggers:
 overload misfires (held past the deadline and released just past it), codex previews of all 30 cards
 and 10 relics, and a shop relic purchase. That test restarts the game and sets gold through
 `page.evaluate` as set-up; the sounds themselves are triggered by real clicks and keys.
+The audio-loading spec separately checks starter prioritization, the immediate synthesizer fallback,
+real MP3 playback after an offline reload, and the `file://` fallback. Offline audio is available
+for assets successfully cached on an earlier visit; independent external fonts aren't cached.
+When any packed audio changes, bump the cache version in `sw.js` with it.
+
+From the repo root, run `node tools/bench-loading.mjs [site-directory]` to measure cold/repeat
+loads over local HTTP with the Chromium installed by QA. It reports browser requests/transferred
+bytes and local-origin requests/response-body bytes (including service worker requests). The
+accounted byte total combines origin response bodies with page-observed external transfers.
 
 All tests now also fail on page errors, console errors and failed or 4xx/5xx requests.
 The simulator test checks 10 executions x 10 rows x 18 waves; it does not require every run to be a

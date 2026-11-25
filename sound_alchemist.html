@@ -934,6 +934,34 @@
     //     (built by scripts/extract-envelopes.mjs; any id without a loaded
     //     asset keeps using the procedural synthesizer below)
     // =========================================================================
+    async function enableOfflineAudio() {
+      if (!/^https?:$/.test(location.protocol) || !navigator.serviceWorker) return;
+      let timer;
+      let controlled;
+      try {
+        const worker = navigator.serviceWorker;
+        const registration = worker.register('sw.js');
+        if (worker.controller) {
+          registration.catch(() => {});
+          return;
+        }
+        const control = new Promise(resolve => {
+          controlled = resolve;
+          worker.addEventListener('controllerchange', controlled, { once: true });
+        });
+        await Promise.race([
+          registration.then(() => worker.controller ? undefined : control),
+          new Promise(resolve => { timer = setTimeout(resolve, 1500); })
+        ]);
+        if (worker.controller) worker.controller.postMessage('warm-shell');
+      } catch (e) {
+        // Audio can still load without a service worker.
+      } finally {
+        clearTimeout(timer);
+        if (controlled) navigator.serviceWorker.removeEventListener('controllerchange', controlled);
+      }
+    }
+
     class AudioAssetManager {
       constructor(baseUrl = 'assets/audio/') {
         this.baseUrl = baseUrl;
@@ -943,15 +971,22 @@
         this.entries = new Map(); // id -> { meta, envelope, encoded, buffer }
         this.ctx = null;
         this._preload = null;
+        this.catalog = null;
+        this.priority = [];
+        this.requested = new Set();
+        this.attempted = new Set();
+        this.failed = new Set();
+        this.active = 0;
+        this.idleScheduled = false;
         this.gainLevel = 0.6;
         this.timeoutMs = 8000;
       }
 
-      async _fetch(path, type) {
+      async _fetch(path, type, priority = 'auto') {
         const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
         const timer = ctrl ? setTimeout(() => ctrl.abort(), this.timeoutMs) : null;
         try {
-          const res = await fetch(this.baseUrl + path, ctrl ? { signal: ctrl.signal } : undefined);
+          const res = await fetch(this.baseUrl + path, { signal: ctrl?.signal, priority });
           if (!res.ok) throw new Error(`HTTP ${res.status} for ${path}`);
           return type === 'json' ? await res.json() : await res.arrayBuffer();
         } finally {
@@ -964,7 +999,7 @@
         this.reason = reason;
       }
 
-      // Safe to call before any user gesture: fetches only, decoding waits for attachContext().
+      // Before the first audio gesture, only fetch; attachContext() enables decoding.
       preload() {
         if (this._preload) return this._preload;
         this._preload = (async () => {
@@ -972,12 +1007,8 @@
             this._fallback('file:// 無法載入音訊資產');
             return;
           }
-          if (navigator.onLine === false) {
-            this._fallback('離線');
-            this._retryWhenOnline();
-            return;
-          }
           this.status = 'loading';
+          await enableOfflineAudio();
           let manifest;
           try {
             manifest = await this._fetch('manifest.json', 'json');
@@ -986,33 +1017,79 @@
             this._retryWhenOnline();
             return;
           }
-          if (manifest && manifest.windowMs) this.windowMs = manifest.windowMs;
-          const ids = Object.keys((manifest && manifest.assets) || {});
-          let failed = 0;
-          await Promise.all(ids.map(async (id) => {
-            if (this.entries.has(id)) return;
-            const meta = manifest.assets[id];
-            try {
-              const [envelope, encoded] = await Promise.all([
-                this._fetch(meta.envelope, 'json'),
-                this._fetch(meta.file, 'buffer')
-              ]);
-              if (!envelope || !Array.isArray(envelope.rms) || !envelope.rms.length) throw new Error('bad envelope');
-              this.entries.set(id, { meta, envelope, encoded, buffer: null });
-            } catch (e) {
-              failed += 1;
-            }
-          }));
-          if (this.entries.size === 0) {
-            this._fallback(ids.length ? '音訊檔載入失敗' : 'manifest 內沒有 MP3');
-          } else {
+          if (manifest?.windowMs) this.windowMs = manifest.windowMs;
+          this.catalog = new Map(Object.entries(manifest?.assets || {}));
+          if (!this.catalog.size) this._fallback('manifest 內沒有 MP3');
+          this._pump();
+        })();
+        return this._preload;
+      }
+
+      prioritize(ids) {
+        this.priority = ids;
+        this._pump();
+      }
+
+      request(id) {
+        if (!this._needsWork(id)) return;
+        this.requested.add(id);
+        this._pump();
+      }
+
+      _needsWork(id) {
+        return !this.attempted.has(id) || (this.ctx && this.entries.get(id)?.encoded);
+      }
+
+      _pump() {
+        if (!this.catalog?.size || !this.priority.length) return;
+        const pending = id => this.catalog.has(id) && this._needsWork(id);
+        while (this.active < 4) {
+          const id = [...this.requested, ...this.priority].find(pending);
+          if (!id) break;
+          this._load(id, 'auto');
+        }
+        if (this.active || this.idleScheduled) return;
+        if (![...this.catalog.keys()].some(pending)) {
+          if (!this.entries.size) this._fallback('音訊檔載入失敗');
+          return;
+        }
+        this.idleScheduled = true;
+        const loadNext = () => {
+          this.idleScheduled = false;
+          if (this.active) return;
+          const id = [...this.catalog.keys()].find(pending);
+          if (id) this._load(id, 'low');
+        };
+        if (typeof requestIdleCallback === 'function') requestIdleCallback(loadNext, { timeout: 1000 });
+        else setTimeout(loadNext, 50);
+      }
+
+      async _load(id, priority) {
+        this.active += 1;
+        this.attempted.add(id);
+        this.requested.delete(id);
+        const meta = this.catalog.get(id);
+        try {
+          let entry = this.entries.get(id);
+          if (!entry) {
+            const [envelope, encoded] = await Promise.all([
+              this._fetch(meta.envelope, 'json', priority),
+              this._fetch(meta.file, 'buffer', priority)
+            ]);
+            if (!Array.isArray(envelope?.rms) || !envelope.rms.length) throw new Error('bad envelope');
+            entry = { meta, envelope, encoded, buffer: null };
+            this.entries.set(id, entry);
             this.status = 'ready';
             this.reason = '';
           }
-          if (failed > 0) this._retryWhenOnline();
-          if (this.ctx) this._decodeAll();
-        })();
-        return this._preload;
+          if (this.ctx) await this._decode(id, entry);
+        } catch (e) {
+          this.failed.add(id);
+          this._retryWhenOnline();
+        } finally {
+          this.active -= 1;
+          this._pump();
+        }
       }
 
       _retryWhenOnline() {
@@ -1020,24 +1097,35 @@
         this._retryArmed = true;
         window.addEventListener('online', () => {
           this._retryArmed = false;
-          this._preload = null;
-          this.preload();
+          if (!this.catalog) {
+            this._preload = null;
+            this.preload();
+          } else {
+            for (const id of this.failed) this.attempted.delete(id);
+            this.failed.clear();
+            this._pump();
+          }
         }, { once: true });
       }
 
       attachContext(ctx) {
         if (!ctx || this.ctx === ctx) return;
         this.ctx = ctx;
-        this._decodeAll();
+        this._pump();
       }
 
-      _decodeAll() {
-        this.entries.forEach((entry, id) => {
-          if (entry.buffer || !entry.encoded) return;
-          const encoded = entry.encoded;
-          entry.encoded = null;
-          const done = (buffer) => { entry.buffer = buffer; };
-          const fail = () => { this.entries.delete(id); };
+      _decode(id, entry) {
+        if (!entry.encoded) return;
+        const encoded = entry.encoded;
+        entry.encoded = null;
+        return new Promise(resolve => {
+          const done = buffer => { entry.buffer = buffer; resolve(); };
+          const fail = () => {
+            this.entries.delete(id);
+            this.failed.add(id);
+            this._retryWhenOnline();
+            resolve();
+          };
           try {
             const p = this.ctx.decodeAudioData(encoded, done, fail);
             if (p && typeof p.catch === 'function') p.catch(() => {});
@@ -1377,6 +1465,7 @@
       playCardHit(isPeak, card, panVal = 0, delaySec = 0, when = 0) {
         this.init();
         if (!this.ctx || this.muted) return;
+        if (isPeak) audioAssets.request(card.id);
         const played = isPeak && audioAssets.has(card.id) && audioAssets.play(card.id, {
           out: this.createPanner(panVal),
           when: (when > 0 ? when : this.ctx.currentTime) + delaySec,
@@ -1390,6 +1479,7 @@
       playInstantCard(card, panVal = 0) {
         this.init();
         if (!this.ctx || this.muted) return;
+        audioAssets.request(card.id);
         if (audioAssets.has(card.id) && audioAssets.play(card.id, { out: this.createPanner(panVal) })) return;
         this.playImpactOrRelease(true, card, panVal);
       }
@@ -1397,6 +1487,7 @@
       playRelic(relic) {
         this.init();
         if (!this.ctx || this.muted) return;
+        audioAssets.request(relic.id);
         if (audioAssets.play(relic.id, { out: this.compressor })) return;
         this.playImpactOrRelease(true, ALL_CARDS[0], 0);
       }
@@ -3141,6 +3232,7 @@
     }
 
     function renderHandUI() {
+      audioAssets.prioritize([...state.hand.map(c => c.id), ...state.ownedRelics, ...state.masterDeck.map(c => c.id)]);
       const container = document.getElementById('handContainer');
       if (!container) return;
       container.innerHTML = '';

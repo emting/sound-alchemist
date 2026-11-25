@@ -31,7 +31,7 @@ async function openGame(page) {
   await page.evaluate(() => document.fonts.ready);
   const hookError = await page.evaluate(() => window.__qa.hookError || null);
   if (hookError) throw new Error(hookError);
-  // Over http, wait for the asset fetches to settle (decoding only starts with the AudioContext).
+  // Over HTTP, wait for initial audio readiness, not the full idle batch.
   if (HTTP) await page.waitForFunction(() => { const a = window.__qa.assetStatus && window.__qa.assetStatus(); return !a || (a.status !== 'idle' && a.status !== 'loading'); }, null, { timeout: 30000 }).catch(() => {});
 }
 
