@@ -3546,7 +3546,9 @@
 
     // Draw Bespoke Multi-Part Monster & Boss Sprites (Zero Plain Boxes!)
     function drawMonsterSprite(e, ex, ey, nowSec) {
+      const compact = compactArena.matches;
       const wkColor = state.blindMode ? '#f43f5e' : (SHIELD_COLORS[e.weakness] || '#fbbf24');
+      const keyChar = e.weakness === 'metal' ? 'Q' : (e.weakness === 'crystal' ? 'W' : 'E');
       const bob = Math.sin(nowSec * 5 + (e.animSeed || 0)) * (e.isBoss ? 4.5 : 3.0);
       const scale = e.isBoss ? 1.48 : 1.0;
 
@@ -3568,13 +3570,15 @@
         ctx.arc(0, 0, pulseR, 0, Math.PI * 2);
         ctx.stroke();
 
-        ctx.fillStyle = wkColor;
-        ctx.font = '800 11px "Noto Sans TC", sans-serif';
-        ctx.textAlign = 'center';
-        const hintLabel = state.blindMode
-          ? '♪ 盲聽辨位彈反! [Q/W/E]'
-          : `⚡ 舉盾彈反: ${SHIELD_NAMES[e.weakness]}`;
-        ctx.fillText(hintLabel, 0, -38 * scale);
+        if (!compact) {
+          ctx.fillStyle = wkColor;
+          ctx.font = '800 11px "Noto Sans TC", sans-serif';
+          ctx.textAlign = 'center';
+          const hintLabel = state.blindMode
+            ? '♪ 盲聽辨位彈反! [Q/W/E]'
+            : `⚡ 舉盾彈反: ${SHIELD_NAMES[e.weakness]}`;
+          ctx.fillText(hintLabel, 0, -38 * scale);
+        }
       }
 
       // Draw Distinct Silhouette by Act / Monster Type
@@ -3678,7 +3682,6 @@
         ctx.fillStyle = wkColor;
         ctx.font = '900 9px "JetBrains Mono", monospace';
         ctx.textAlign = 'center';
-        const keyChar = e.weakness === 'metal' ? 'Q' : (e.weakness === 'crystal' ? 'W' : 'E');
         ctx.fillText(keyChar, 18, -13);
       }
 
@@ -3690,7 +3693,7 @@
       let hpW = e.isBoss ? 86 : 54;
       let hpLeft = ex - hpW / 2;
       let hpTop = nameplateY;
-      if (compactArena.matches) {
+      if (compact) {
         // Keep the bar beside its sprite and inside the same tappable lane.
         hpW = e.isBoss ? 44 : 34;
         const gap = e.isBoss ? 38 : 28;
@@ -3712,6 +3715,15 @@
       ctx.beginPath();
       ctx.roundRect(hpLeft, hpTop, hpW * hpRatio, 5, 2.5);
       ctx.fill();
+
+      if (compact && e.telegraphing) {
+        // Keep the cue with its health bar, clear of the neighboring lane's bars.
+        ctx.fillStyle = wkColor;
+        ctx.font = '800 10px "Noto Sans TC", sans-serif';
+        ctx.textAlign = 'center';
+        const hint = state.blindMode ? '盲聽 Q/W/E' : `彈反 [${keyChar}]`;
+        ctx.fillText(hint, hpLeft + hpW / 2, hpTop - 5);
+      }
 
       // HP Numeric Readout & Name
       ctx.fillStyle = '#f8fafc';
