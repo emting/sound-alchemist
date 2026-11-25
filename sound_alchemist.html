@@ -2256,7 +2256,7 @@
     }
 
     function beginTutorialCastStep() {
-      if (state.tutorialStep !== 1) return;
+      if (state.tutorialStep !== 1 && state.tutorialStep !== 2) return;
       state.tutorialStep = 2;
       const chargedCard = state.hand.find(card => getEffectiveCardCharge(card) > 0.01)
         || state.masterDeck.find(card => getEffectiveCardCharge(card) > 0.01);
@@ -4948,6 +4948,10 @@
         state.deckPreset = e.target.value;
         state.mana = state.maxMana;
         buildMasterDeckFromPreset();
+        if (state.tutorialStep > 0) {
+          state.tutorialSnapshot = saveTutorialSnapshot();
+          if (state.tutorialStep === 2) beginTutorialCastStep();
+        }
         updateHUD();
         showToast('已重建流派牌庫並洗牌抽取 5 張手牌！');
       });
