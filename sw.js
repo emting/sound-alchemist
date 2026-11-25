@@ -7,7 +7,11 @@ const AUDIO = new URL('assets/audio/', self.registration.scope).href;
 const TAILWIND = 'https://cdn.tailwindcss.com/3.4.17';
 
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll([HOME, GAME])));
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    await cache.addAll([HOME, GAME]);
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', event => {

@@ -60,9 +60,9 @@ test('offline reload starts an MP3 from the service worker cache', async ({ page
   await page.evaluate(() => { window.allowWorkerRegistration(); });
   const tailwind = 'https://cdn.tailwindcss.com/3.4.17';
   const hasCdnScript = await page.locator(`script[src="${tailwind}"]`).count() > 0;
-  const cached = ['assets/audio/manifest.json', 'assets/audio/envelopes/C01.json', 'assets/audio/sfx/C01.mp3'];
+  const cached = [page.url(), 'assets/audio/manifest.json', 'assets/audio/envelopes/C01.json', 'assets/audio/sfx/C01.mp3'];
   if (hasCdnScript) cached.push(tailwind);
-  await page.waitForFunction(async urls => navigator.serviceWorker.controller &&
+  await page.waitForFunction(async urls => navigator.serviceWorker.controller?.state === 'activated' &&
     (await Promise.all(urls.map(url => caches.match(url)))).every(Boolean), cached, { timeout: 60000 });
   await context.setOffline(true);
   const response = await page.reload();
@@ -90,6 +90,24 @@ test('offline reload starts an MP3 from the service worker cache', async ({ page
   const played = await page.evaluate(() => ({ mp3Starts: window.offlineMp3Starts, assets: audioAssets.summary() }));
   expect(played.mp3Starts).toBe(1);
   await testInfo.attach('offline decode and playback', { body: JSON.stringify(played), contentType: 'application/json' });
+});
+
+test('an updated worker takes control without closing the game tab', async ({ page }) => {
+  test.skip(!HTTP, 'needs QA_HTTP=1');
+  await page.goto(await gameUrl());
+  await page.waitForFunction(() => navigator.serviceWorker.controller);
+  const retiredCache = await page.evaluate(async () => {
+    const scope = new URL('./', location.href).href;
+    const key = `sound-alchemist:${scope}:retired`;
+    await caches.open(key);
+    await navigator.serviceWorker.register('sw.js?update-test=1');
+    return key;
+  });
+  await page.waitForFunction(() => {
+    const worker = navigator.serviceWorker.controller;
+    return worker?.state === 'activated' && worker.scriptURL.endsWith('?update-test=1');
+  }, null, { timeout: 15000 });
+  expect(await page.evaluate(async key => (await caches.keys()).includes(key), retiredCache)).toBe(false);
 });
 
 test('file URL still initializes the hand and uses the synth fallback', async ({ page }) => {
