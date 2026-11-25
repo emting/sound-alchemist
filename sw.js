@@ -1,6 +1,6 @@
 // Bump this version whenever the packed audio files or manifest change.
 const PREFIX = 'sound-alchemist:' + self.registration.scope + ':';
-const CACHE = PREFIX + 'v1';
+const CACHE = PREFIX + 'v2';
 const HOME = new URL('index.html', self.registration.scope).href;
 const GAME = new URL('sound_alchemist.html', self.registration.scope).href;
 const AUDIO = new URL('assets/audio/', self.registration.scope).href;

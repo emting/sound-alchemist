@@ -2,7 +2,7 @@
 // Offline envelope pipeline for Sound Alchemist.
 //
 // Reads assets/audio/sfx/<ID>.mp3 for the 30 cards + 10 relics declared in
-// sound_alchemist.html, checks each file is a 320 kbps stereo MP3, and writes
+// sound_alchemist.html, checks each file is a 128 kbps stereo MP3, and writes
 //   assets/audio/envelopes/<ID>.json  (50 ms RMS envelope)
 //   assets/audio/manifest.json        (what the runtime AudioAssetManager loads)
 //
@@ -17,7 +17,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export const WINDOW_MS = 50;
-export const REQUIRED = { codec: 'mp3', channels: 2, bitrate: 320000 };
+export const REQUIRED = { codec: 'mp3', channels: 2, bitrate: 128000 };
 const BITRATE_TOLERANCE = 0.02;
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -67,7 +67,7 @@ export function conformanceProblems(info) {
   if (info.codec !== REQUIRED.codec) problems.push(`codec is ${info.codec}, expected mp3`);
   if (info.channels !== REQUIRED.channels) problems.push(`${info.channels} channel(s), expected stereo`);
   if (!(Math.abs(info.bitrate - REQUIRED.bitrate) <= REQUIRED.bitrate * BITRATE_TOLERANCE)) {
-    problems.push(`bitrate is ${Math.round(info.bitrate / 1000)} kbps, expected 320 kbps`);
+    problems.push(`bitrate is ${Math.round(info.bitrate / 1000)} kbps, expected 128 kbps`);
   }
   return problems;
 }
