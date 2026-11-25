@@ -105,6 +105,10 @@
       background: linear-gradient(145deg, rgba(28, 12, 54, 0.92) 0%, rgba(13, 5, 28, 0.96) 100%);
       box-shadow: 0 12px 36px -8px rgba(236, 72, 153, 0.22), inset 0 1px 0 0 rgba(0, 245, 212, 0.18);
     }
+    main .glass-panel {
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
     /* Collectible TCG Card Styling */
     .tcg-card {
       position: relative;
@@ -155,11 +159,11 @@
   <div class="crt-overlay fixed inset-0 z-40"></div>
 
   <!-- Top Navigation & Audio Synthesizer Console Header -->
-  <header class="w-full border-b border-slate-800/90 bg-slate-950/90 backdrop-blur-xl z-30 px-3 py-2.5 shadow-xl">
-    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+  <header class="w-full border-b border-slate-800/90 bg-slate-950/90 z-30 px-3 py-2.5 max-[481px]:py-1.5 max-[481px]:[&_.font-mono-code]:[font-family:inherit] shadow-xl">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2 max-[481px]:gap-1">
       <!-- Brand Crest & Act Status -->
       <div class="flex items-center gap-3">
-        <div id="brandBadge" class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400/30 via-amber-500/15 to-sky-500/20 border border-amber-400/60 flex items-center justify-center text-amber-300 font-black text-xl shadow-[0_0_18px_rgba(245,158,11,0.3)]">
+        <div id="brandBadge" class="w-10 h-10 max-[481px]:size-8 rounded-xl bg-gradient-to-br from-amber-400/30 via-amber-500/15 to-sky-500/20 border border-amber-400/60 flex items-center justify-center text-amber-300 font-black text-xl shadow-[0_0_18px_rgba(245,158,11,0.3)]">
           ∿
         </div>
         <div>
@@ -181,7 +185,7 @@
       </div>
 
       <!-- Dual-Timbre Switch & Master Console Buttons -->
-      <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+      <div class="flex flex-wrap items-center gap-1.5 sm:gap-2 max-[481px]:gap-1 max-[481px]:[&>button]:px-1.5 max-[481px]:[&>button]:py-1 max-[481px]:[&>button]:text-[10px]">
         <button id="btnTimbreSwitch" type="button" class="px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 bg-gradient-to-r from-amber-500/20 to-orange-500/15 border-amber-400/60 text-amber-200 hover:brightness-125 shadow-[0_0_14px_rgba(245,158,11,0.2)]" title="切換寫實共鳴 (Natural) 與風格化共鳴 (Stylized)">
           <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse shadow-[0_0_8px_#fbbf24]" id="timbreDot"></span>
           <span id="timbreLabel">調音台：寫實共鳴 (Natural ±65ms)</span>
@@ -219,9 +223,9 @@
   </header>
 
   <!-- Main Workspace Container -->
-  <main class="flex-1 max-w-7xl w-full mx-auto px-2 sm:px-4 py-2 flex flex-col gap-2.5">
+  <main class="flex-1 max-w-7xl w-full mx-auto px-2 sm:px-4 py-2 flex flex-col gap-2.5 max-[481px]:gap-1.5 max-[481px]:[&_.font-mono-code]:[font-family:inherit]">
     <!-- Top HUD Strip: Ornate Instrument Cluster -->
-    <section class="grid grid-cols-2 sm:grid-cols-12 gap-2.5 items-center glass-panel border border-slate-800/90 rounded-2xl p-3">
+    <section class="grid grid-cols-2 sm:grid-cols-12 gap-2.5 items-center glass-panel border border-slate-800/90 rounded-2xl p-3 max-[481px]:gap-1 max-[481px]:p-1.5">
       <!-- Tower Durability & Hex Shield Readout -->
       <div class="col-span-2 sm:col-span-3 flex items-center gap-3 pr-1">
         <div class="flex-1">
@@ -236,14 +240,14 @@
             <div id="hpBarFill" class="h-full rounded-full bg-gradient-to-r from-rose-600 via-orange-500 to-amber-400 transition-all duration-300 shadow-[0_0_10px_rgba(244,63,94,0.6)]" style="width: 100%;"></div>
           </div>
         </div>
-        <div class="px-3 py-1.5 rounded-xl bg-gradient-to-b from-sky-500/25 to-sky-900/20 border border-sky-400/50 text-center min-w-[70px] shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]">
+        <div class="px-3 py-1.5 max-[481px]:py-0.5 rounded-xl bg-gradient-to-b from-sky-500/25 to-sky-900/20 border border-sky-400/50 text-center min-w-[70px] shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]">
           <div class="text-[10px] text-sky-300 font-semibold tracking-wider">共鳴護盾</div>
-          <div id="hudArmor" class="text-base font-mono-code font-black text-sky-200">0</div>
+          <div id="hudArmor" class="text-base font-mono-code font-black text-sky-200 max-[481px]:leading-5">0</div>
         </div>
       </div>
 
       <!-- Acoustic Mana Orbs, Resonance Charge Bar, Combo & Gold -->
-      <div class="col-span-2 sm:col-span-5 grid grid-cols-5 gap-1.5 items-center border-t sm:border-t-0 sm:border-l sm:border-r border-slate-800/90 pt-2 sm:pt-0 px-2">
+      <div class="col-span-2 sm:col-span-5 grid grid-cols-5 gap-1.5 items-center border-t sm:border-t-0 sm:border-l sm:border-r border-slate-800/90 pt-2 sm:pt-0 px-2 max-[481px]:px-0 max-[481px]:pt-1 max-[481px]:[&>div]:py-0.5">
         <div class="text-center bg-slate-950/60 rounded-xl py-1.5 px-1 border border-slate-800/80">
           <div class="text-[10px] text-slate-400">聲波魔力</div>
           <div class="text-base font-mono-code font-black text-amber-400">
@@ -254,7 +258,7 @@
 
         <div class="text-center bg-slate-950/60 rounded-xl py-1.5 px-1 border border-slate-800/80" title="每次 Peak 累積 1 格充能（風格化 +1.5 格），集滿 2 格自動回復 +1 魔力">
           <div class="text-[10px] text-slate-400">Peak 充能</div>
-          <div id="hudChargeCells" class="text-xs font-mono-code font-black text-cyan-300 mt-0.5">0.0 / 2.0 ⚡</div>
+          <div id="hudChargeCells" class="text-xs font-mono-code font-black text-cyan-300 mt-0.5 max-[481px]:text-[10px] max-[481px]:leading-4">0.0 / 2.0 ⚡</div>
           <div class="w-4/5 mx-auto h-1.5 bg-slate-800 rounded-full overflow-hidden mt-1">
             <div id="hudChargeBarFill" class="h-full bg-cyan-400 transition-all duration-200" style="width: 0%;"></div>
           </div>
@@ -280,7 +284,7 @@
       <div class="col-span-2 sm:col-span-4 flex items-center justify-between gap-2 pl-1">
         <div class="flex-1 overflow-x-auto">
           <div class="text-[10px] text-slate-400 mb-1 flex items-center justify-between">
-            <span class="font-semibold text-slate-300">聲學遺物徽章（點擊試聽）：</span>
+            <span class="font-semibold text-slate-300 max-[481px]:sr-only">聲學遺物徽章（點擊試聽）：</span>
             <div class="flex items-center gap-1">
               <span id="discountBuffTag" class="hidden text-[10px] font-mono-code px-1.5 py-0.2 bg-emerald-500/20 text-emerald-300 rounded border border-emerald-400/40">下張減 1 費</span>
               <span id="nextCardBuffTag" class="hidden text-[10px] font-mono-code px-1.5 py-0.2 bg-amber-500/20 text-amber-300 rounded border border-amber-400/40">下張傷害 +50%</span>
@@ -296,32 +300,35 @@
     </section>
 
     <!-- Center Stage: Studio-Grade Parallax Battlefield Canvas + Oscilloscope -->
-    <section class="relative w-full bg-slate-950 border-2 border-slate-800/90 rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.85)]" style="height: 380px;">
-      <canvas id="battleCanvas" class="w-full h-full block cursor-pointer"></canvas>
+    <section class="relative w-full bg-slate-950 border-2 border-slate-800/90 rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.85)] min-[481px]:h-[380px] max-[481px]:flex max-[481px]:flex-col">
+      <canvas id="battleCanvas" class="w-full h-full block cursor-pointer max-[481px]:order-3 max-[481px]:h-[200px]"></canvas>
 
       <!-- Top-Center Boss Alert Banner -->
-      <div id="bossAlertBanner" class="hidden absolute top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-rose-950/95 via-purple-950/95 to-rose-950/95 border border-rose-400/70 px-4 py-1.5 rounded-full text-xs font-black text-rose-200 shadow-[0_0_25px_rgba(244,63,94,0.45)] z-10 items-center gap-2">
+      <div id="bossAlertBanner" class="hidden absolute top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-rose-950/95 via-purple-950/95 to-rose-950/95 border border-rose-400/70 px-4 py-1.5 rounded-full text-xs font-black text-rose-200 shadow-[0_0_25px_rgba(244,63,94,0.45)] z-10 items-center gap-2 max-[481px]:static max-[481px]:order-2 max-[481px]:mx-1 max-[481px]:translate-x-0">
         <span class="w-2.5 h-2.5 rounded-full bg-rose-400 animate-ping"></span>
         <span id="bossAlertText">ACT BOSS 登場：聲學干擾生效中</span>
       </div>
 
       <!-- Top-Left Stereo Lane Selector Console -->
-      <div class="absolute top-3 inset-x-3 z-10 flex flex-wrap items-start justify-between gap-2 pointer-events-none">
-      <div class="flex items-center gap-1.5 bg-slate-950/85 backdrop-blur-xl border border-slate-700/80 rounded-xl p-1.5 z-10 shadow-xl pointer-events-auto">
-        <span class="text-[11px] text-slate-300 px-1.5 font-bold">立體聲軌：</span>
+      <div class="absolute top-3 inset-x-3 z-10 flex flex-wrap items-start justify-between gap-2 pointer-events-none max-[481px]:static max-[481px]:order-1 max-[481px]:grid max-[481px]:grid-cols-4 max-[481px]:gap-1 max-[481px]:p-1 max-[481px]:[&_button]:min-h-11">
+      <div class="flex items-center gap-1.5 bg-slate-950/85 border border-slate-700/80 rounded-xl p-1.5 z-10 shadow-xl pointer-events-auto max-[481px]:contents max-[481px]:[&>button]:pointer-events-auto">
+        <span class="text-[11px] text-slate-300 px-1.5 font-bold max-[481px]:hidden">立體聲軌：</span>
         <button id="btnLane0" type="button" class="lane-btn px-2.5 py-1 rounded-lg text-xs font-mono-code font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
-          [1] 左聲道 L (-0.8)
+          <span class="max-[481px]:hidden">[1] 左聲道 L (-0.8)</span><span class="min-[481px]:hidden">左聲道</span>
         </button>
         <button id="btnLane1" type="button" class="lane-btn px-2.5 py-1 rounded-lg text-xs font-mono-code font-bold bg-amber-500 text-slate-950 shadow transition">
-          [2] 中聲道 C (0.0)
+          <span class="max-[481px]:hidden">[2] 中聲道 C (0.0)</span><span class="min-[481px]:hidden">中聲道</span>
         </button>
         <button id="btnLane2" type="button" class="lane-btn px-2.5 py-1 rounded-lg text-xs font-mono-code font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
-          [3] 右聲道 R (+0.8)
+          <span class="max-[481px]:hidden">[3] 右聲道 R (+0.8)</span><span class="min-[481px]:hidden">右聲道</span>
         </button>
       </div>
 
       <!-- Top-Right Live Sound Effect Oscilloscope & Telemetry Readout -->
-      <div class="ml-auto bg-slate-950/88 backdrop-blur-xl border border-slate-700/80 rounded-xl px-3.5 py-2 text-right z-10 max-w-xs shadow-xl pointer-events-auto">
+      <button id="btnTelemetryToggle" type="button" aria-controls="telemetryPanel" aria-expanded="false" class="peer group min-[481px]:hidden pointer-events-auto rounded-lg border border-slate-700 bg-slate-900 px-1 text-xs font-bold text-sky-300">
+        遙測 <span aria-hidden="true" class="group-aria-expanded:hidden">▾</span><span aria-hidden="true" class="hidden group-aria-expanded:inline">▴</span>
+      </button>
+      <div id="telemetryPanel" class="ml-auto bg-slate-950/88 border border-slate-700/80 rounded-xl px-3.5 py-2 text-right z-10 max-w-xs shadow-xl pointer-events-auto max-[481px]:hidden max-[481px]:peer-aria-expanded:block max-[481px]:col-span-4 max-[481px]:ml-0 max-[481px]:max-w-none">
         <div class="text-[10px] font-mono-code text-slate-400 flex items-center justify-end gap-2">
           <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
           <span>即時音訊包絡遙測</span>
@@ -333,47 +340,54 @@
       </div>
 
       <!-- Bottom-Left Stereo Telegraph Parry Shields -->
-      <div class="absolute bottom-3 inset-x-3 z-10 flex flex-wrap-reverse items-end justify-between gap-2 pointer-events-none">
-      <div class="flex flex-wrap items-center gap-1.5 bg-slate-950/90 backdrop-blur-xl border border-slate-700/80 rounded-xl p-1.5 z-10 shadow-xl pointer-events-auto">
-        <span class="text-[11px] text-slate-200 font-bold px-1.5">聽音調諧舉盾：</span>
+      <div class="absolute bottom-3 inset-x-3 z-10 flex flex-wrap-reverse items-end justify-between gap-2 pointer-events-none max-[481px]:static max-[481px]:order-4 max-[481px]:grid max-[481px]:grid-cols-5 max-[481px]:items-stretch max-[481px]:gap-1 max-[481px]:p-1 max-[481px]:[&_button]:pointer-events-auto max-[481px]:[&_button]:min-h-11 max-[481px]:[&_button]:justify-center max-[481px]:[&_button]:px-0.5 max-[481px]:[&_button]:py-0.5 max-[481px]:[&_button]:text-[11px]">
+      <div class="flex flex-wrap items-center gap-1.5 bg-slate-950/90 border border-slate-700/80 rounded-xl p-1.5 z-10 shadow-xl pointer-events-auto max-[481px]:contents">
+        <span class="text-[11px] text-slate-200 font-bold px-1.5 max-[481px]:hidden">聽音調諧舉盾：</span>
         <button id="btnParryMetal" type="button" class="px-3 py-1.5 rounded-lg text-xs font-black bg-gradient-to-b from-amber-500/25 to-slate-900 hover:brightness-125 text-amber-300 border border-amber-400/60 transition flex items-center gap-1 shadow-sm">
-          <span>[Q] 金屬格擋</span>
+          <span class="max-[481px]:hidden">[Q] 金屬格擋</span><span class="min-[481px]:hidden">金屬 Q</span>
         </button>
         <button id="btnParryCrystal" type="button" class="px-3 py-1.5 rounded-lg text-xs font-black bg-gradient-to-b from-cyan-500/25 to-slate-900 hover:brightness-125 text-cyan-300 border border-cyan-400/60 transition flex items-center gap-1 shadow-sm">
-          <span>[W] 水晶格擋</span>
+          <span class="max-[481px]:hidden">[W] 水晶格擋</span><span class="min-[481px]:hidden">水晶 W</span>
         </button>
         <button id="btnParryEnergy" type="button" class="px-3 py-1.5 rounded-lg text-xs font-black bg-gradient-to-b from-fuchsia-500/25 to-slate-900 hover:brightness-125 text-fuchsia-300 border border-fuchsia-400/60 transition flex items-center gap-1 shadow-sm">
-          <span>[E] 能量格擋</span>
+          <span class="max-[481px]:hidden">[E] 能量格擋</span><span class="min-[481px]:hidden">能量 E</span>
         </button>
       </div>
 
       <!-- Bottom-Right Peak Release Action Button & Next Turn -->
-      <div class="ml-auto flex items-center gap-2 z-10 pointer-events-auto">
+      <div class="ml-auto flex items-center gap-2 z-10 pointer-events-auto max-[481px]:contents">
         <button id="btnReleaseCast" type="button" disabled class="px-4 py-2 rounded-xl text-xs sm:text-sm font-black tracking-wide bg-slate-900/90 text-slate-500 border border-slate-700/80 shadow-xl transition-all">
-          [空白鍵 / 點擊畫面] 峰值釋放 (PEAK RELEASE)
+          <span class="max-[481px]:hidden">[空白鍵 / 點擊畫面] 峰值釋放 (PEAK RELEASE)</span><span class="min-[481px]:hidden">峰值釋放</span>
         </button>
         <button id="btnEndTurn" type="button" class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-black bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white border border-indigo-400/60 shadow-xl transition">
-          重抽換牌 / 下一波 [R]
+          <span class="max-[481px]:hidden">重抽換牌 / 下一波 [R]</span><span class="min-[481px]:hidden">換牌<br>下一波</span>
         </button>
       </div>
       </div>
     </section>
 
     <!-- Bottom Hand Deck & Faction Filter Strip (Collectible TCG Layout) -->
-    <section class="glass-panel border border-slate-800/90 rounded-2xl p-3.5 flex flex-col gap-2.5">
-      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/90 pb-2.5">
-        <div class="flex flex-wrap items-center gap-2">
-          <span class="text-xs font-extrabold text-amber-200 tracking-wide">✦ 聲波法典手牌區（支援點擊兩段式或按住放開共鳴）：</span>
-          <span id="castHintBadge" class="text-[11px] font-mono-code px-2.5 py-0.5 rounded-full bg-slate-900 text-slate-300 border border-slate-700">
-            等待出牌...
-          </span>
-          <div class="flex items-center gap-1.5 text-[11px] font-mono-code ml-1">
+    <section class="glass-panel border border-slate-800/90 rounded-2xl p-3.5 flex flex-col gap-2.5 max-[481px]:gap-1 max-[481px]:p-1.5">
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/90 pb-2.5 max-[481px]:contents">
+        <div class="flex flex-wrap items-center gap-2 max-[481px]:contents">
+          <div class="contents max-[481px]:flex max-[481px]:flex-wrap max-[481px]:items-center max-[481px]:gap-1">
+            <span class="text-xs font-extrabold text-amber-200 tracking-wide">
+              <span class="max-[481px]:hidden">✦ 聲波法典手牌區（支援點擊兩段式或按住放開共鳴）：</span><span class="min-[481px]:hidden">手牌</span>
+            </span>
+            <span id="castHintBadge" class="text-[11px] font-mono-code px-2.5 py-0.5 rounded-full bg-slate-900 text-slate-300 border border-slate-700">
+              等待出牌...
+            </span>
+            <label class="min-[481px]:hidden ml-auto inline-flex min-h-7 items-center gap-1 px-1 text-xs text-sky-300">
+              <input id="showHandDetails" type="checkbox" class="accent-sky-400" aria-controls="handContainer">卡牌詳情
+            </label>
+          </div>
+          <div class="flex items-center gap-1.5 text-[11px] font-mono-code ml-1 max-[481px]:order-1 max-[481px]:ml-0 max-[481px]:[&>span]:px-1.5">
             <span class="px-2.5 py-0.5 rounded-lg bg-slate-950/90 text-sky-300 border border-sky-500/30">抽牌堆：<strong id="hudDrawCount">10</strong></span>
             <span class="px-2.5 py-0.5 rounded-lg bg-slate-950/90 text-slate-400 border border-slate-700">棄牌堆：<strong id="hudDiscardCount">0</strong></span>
             <span class="px-2.5 py-0.5 rounded-lg bg-slate-950/90 text-amber-300 border border-amber-500/30">總牌庫：<strong id="hudMasterCount">12</strong></span>
           </div>
         </div>
-        <div class="flex flex-wrap items-center gap-2 text-xs">
+        <div class="flex flex-wrap items-center gap-2 text-xs max-[481px]:order-last max-[481px]:border-t max-[481px]:border-slate-800/90 max-[481px]:pt-2">
           <span class="text-slate-400 font-medium">流派套牌：</span>
           <select id="selectPresetDeck" class="bg-slate-950 border border-slate-700 text-slate-200 rounded-xl px-2.5 py-1 text-xs font-semibold focus:outline-none focus:border-amber-400">
             <option value="balanced">全流派精選混成套牌 (預設 12 張)</option>
@@ -389,7 +403,7 @@
       </div>
 
       <!-- Cards Hand Grid -->
-      <div id="handContainer" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 pt-1 min-h-[212px]"></div>
+      <div id="handContainer" data-compact class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 pt-1 min-h-[212px] max-[481px]:gap-1.5 max-[481px]:min-h-0 max-[481px]:data-[compact]:grid-cols-3 max-[481px]:[&[data-compact]_.hand-card-details]:hidden"></div>
     </section>
   </main>
 
@@ -1834,6 +1848,7 @@
       malletUsedThisWave: false,
       r06ReviveUsed: false,
       gameOver: false,
+      rewardPending: false,
       bulletTimeRemaining: 0,
       stunRemaining: 0,
       screenShake: 0,
@@ -2484,7 +2499,7 @@
         state.mana = Math.min(state.maxMana + 3, state.mana + 1);
         showToast('瞬光擊殺敵人！返還 +1 點聲波魔力');
       }
-      if (state.enemies.length === 0 && !state.gameOver) {
+      if (state.enemies.length === 0 && !state.gameOver && !state.rewardPending) {
         handleWaveCleared();
       }
     }
@@ -2604,6 +2619,7 @@
       state.gold = 80;
       state.r06ReviveUsed = false;
       state.gameOver = false;
+      state.rewardPending = false;
       state.totalKills = 0;
       state.totalCasts = 0;
       state.peakHits = 0;
@@ -2614,6 +2630,7 @@
     }
 
     function handleWaveCleared() {
+      state.rewardPending = true;
       if (state.act === 3 && state.wave === state.maxWaves) {
         triggerGameOver(true);
         return;
@@ -2723,6 +2740,7 @@
       if (state.hand.length < 5) {
         drawCardsFromPile(5 - state.hand.length);
       }
+      state.rewardPending = false;
       spawnWaveEnemies();
       renderHandUI();
       updateHUD();
@@ -3182,19 +3200,19 @@
 
         let liveCalcBadge = '';
         if (normNums.dmg > 0) {
-          liveCalcBadge = `<div class="mt-1.5 px-2 py-1 rounded-lg bg-slate-950/90 border border-slate-800 text-[11px] font-mono-code flex items-center justify-between shadow-inner">
+          liveCalcBadge = `<div class="hand-card-details mt-1.5 px-2 py-1 rounded-lg bg-slate-950/90 border border-slate-800 text-[11px] font-mono-code flex items-center justify-between shadow-inner max-[481px]:flex-wrap max-[481px]:p-0.5 max-[481px]:text-[10px]">
             <span class="text-slate-400">實算傷害</span>
             <span class="${isBuffed ? 'text-emerald-300 font-bold' : 'text-slate-200'}">普通 ${normNums.dmg} <span class="text-amber-300 font-black">/ Peak ${peakNums.dmg}</span></span>
           </div>`;
         } else if (normNums.shield > 0) {
-          liveCalcBadge = `<div class="mt-1.5 px-2 py-1 rounded-lg bg-slate-950/90 border border-slate-800 text-[11px] font-mono-code flex items-center justify-between shadow-inner">
+          liveCalcBadge = `<div class="hand-card-details mt-1.5 px-2 py-1 rounded-lg bg-slate-950/90 border border-slate-800 text-[11px] font-mono-code flex items-center justify-between shadow-inner max-[481px]:flex-wrap max-[481px]:p-0.5 max-[481px]:text-[10px]">
             <span class="text-slate-400">實算護盾</span>
             <span class="text-sky-300 font-bold">普通 +${normNums.shield} <span class="text-amber-300 font-black">/ Peak +${peakNums.shield}</span></span>
           </div>`;
         }
 
         const cardBtn = document.createElement('div');
-        cardBtn.className = `tcg-card ${card.upgraded ? 'tcg-card-upgraded' : ''} rounded-2xl p-3 border text-left flex flex-col justify-between cursor-pointer ${
+        cardBtn.className = `tcg-card ${card.upgraded ? 'tcg-card-upgraded' : ''} rounded-2xl p-3 border text-left flex flex-col justify-between cursor-pointer max-[481px]:rounded-xl max-[481px]:p-1.5 ${
           isCastingThis
             ? 'border-amber-400 ring-2 ring-amber-400/70'
             : canAfford
@@ -3204,24 +3222,24 @@
 
         cardBtn.innerHTML = `
           <div>
-            <div class="flex items-center justify-between gap-1 mb-1.5">
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded-md border ${getFactionBadgeStyle(card.faction)}">
+            <div class="flex items-center justify-between gap-1 mb-1.5 max-[481px]:flex-wrap max-[481px]:mb-0">
+              <span class="hand-card-details text-[10px] font-bold px-2 py-0.5 rounded-md border ${getFactionBadgeStyle(card.faction)}">
                 ${card.id} · ${card.faction}
               </span>
-              <span class="text-xs font-mono-code font-black px-2 py-0.5 rounded-md bg-slate-950 ${effCost < card.cost ? 'text-emerald-300 border-emerald-400/60' : 'text-amber-300 border-slate-700'} border shadow">
+              <span class="text-xs font-mono-code font-black px-2 py-0.5 rounded-md bg-slate-950 max-[481px]:whitespace-nowrap max-[481px]:px-1 ${effCost < card.cost ? 'text-emerald-300 border-emerald-400/60' : 'text-amber-300 border-slate-700'} border shadow">
                 ${effCost} 費 · ${effCharge === 0 ? '瞬發' : effCharge.toFixed(2) + 's'}
               </span>
             </div>
-            ${getCardArtworkSVG(card)}
-            <div class="flex items-center justify-between mt-1.5">
-              <h3 class="text-sm font-black ${card.upgraded ? 'text-yellow-300' : 'text-white'}">${card.name}${card.upgraded ? ' ★+' : ''}</h3>
-              <span class="text-[10px] font-mono-code px-1.5 py-0.2 rounded bg-slate-900 ${card.styleTag === '風格化' ? 'text-pink-400' : 'text-emerald-400'}">${card.styleTag}</span>
+            <div class="hand-card-details contents">${getCardArtworkSVG(card)}</div>
+            <div class="flex items-center justify-between mt-1.5 max-[481px]:mt-1 max-[481px]:flex-wrap">
+              <h3 class="text-sm max-[481px]:text-xs font-black ${card.upgraded ? 'text-yellow-300' : 'text-white'}">${card.name}${card.upgraded ? ' ★+' : ''}</h3>
+              <span class="hand-card-details text-[10px] font-mono-code px-1.5 py-0.2 rounded bg-slate-900 ${card.styleTag === '風格化' ? 'text-pink-400' : 'text-emerald-400'}">${card.styleTag}</span>
             </div>
-            <p class="text-[11px] text-slate-300 mt-1 leading-snug">普通：${card.normalDesc}</p>
-            <p class="text-[11px] text-amber-300 font-semibold mt-0.5 leading-snug">Peak：${card.peakDesc}</p>
+            <p class="hand-card-details text-[11px] text-slate-300 mt-1 leading-snug">普通：${card.normalDesc}</p>
+            <p class="hand-card-details text-[11px] text-amber-300 font-semibold mt-0.5 leading-snug">Peak：${card.peakDesc}</p>
             ${liveCalcBadge}
           </div>
-          <div class="mt-2 pt-1.5 border-t border-slate-800/90 flex items-center justify-between text-[10px] text-slate-400">
+          <div class="hand-card-details mt-2 pt-1.5 border-t border-slate-800/90 flex items-center justify-between text-[10px] text-slate-400 max-[481px]:flex-wrap">
             <span class="truncate max-w-[140px]" title="${card.sfxName}">♪ ${card.sfxName}</span>
             <span class="font-mono-code text-sky-400 font-bold">${isCastingThis ? '放開/點擊釋放!' : '點擊/按住詠唱'}</span>
           </div>
@@ -3356,9 +3374,10 @@
     const canvas = document.getElementById('battleCanvas');
     const ctx = canvas.getContext('2d');
     const canvasCjkFamilies = getComputedStyle(document.documentElement).getPropertyValue('--font-cjk').trim();
+    const compactArena = window.matchMedia('not all and (min-width: 481px)');
 
     function resizeCanvas() {
-      const rect = canvas.parentElement.getBoundingClientRect();
+      const rect = (compactArena.matches ? canvas : canvas.parentElement).getBoundingClientRect();
       canvas.width = rect.width * window.devicePixelRatio;
       canvas.height = rect.height * window.devicePixelRatio;
       ctx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
@@ -3561,8 +3580,41 @@
     }
 
     // Draw Bespoke Multi-Part Monster & Boss Sprites (Zero Plain Boxes!)
+    function getCompactEnemyLabelBox(enemy, x, width) {
+      const labelWidth = 76;
+      const gap = enemy.isBoss ? 38 : 28;
+      const margin = 2;
+      const companion = state.enemies.find(other => other !== enemy && other.lane === enemy.lane);
+      const companionX = companion ? companion.x * width : x;
+      if (!companion || Math.abs(x - companionX) >= labelWidth + 2 * gap) {
+        const left = x - gap - labelWidth;
+        return { left: left >= margin ? left : x + gap, width: labelWidth };
+      }
+
+      // The current waves spawn at most two enemies on one lane. Use the outer
+      // flanks so neither readout can land over the other enemy's sprite.
+      const leftEdge = Math.min(x, companionX) - gap;
+      const rightEdge = Math.max(x, companionX) + gap;
+      const leftSpace = leftEdge - margin;
+      const rightSpace = width - margin - rightEdge;
+      const first = x === companionX ? state.enemies.indexOf(enemy) < state.enemies.indexOf(companion) : x < companionX;
+      const spacing = 4;
+      const pairWidth = 2 * labelWidth + spacing;
+      const useLeft = rightSpace < labelWidth && (leftSpace >= pairWidth || (rightSpace < 42 && leftSpace > rightSpace));
+      const useRight = leftSpace < labelWidth && (rightSpace >= pairWidth || (leftSpace < 42 && rightSpace > leftSpace));
+      if (useLeft || useRight) {
+        const sharedWidth = Math.min(labelWidth, ((useLeft ? leftSpace : rightSpace) - spacing) / 2);
+        const start = useLeft ? leftEdge - 2 * sharedWidth - spacing : rightEdge;
+        return { left: start + (first ? 0 : sharedWidth + spacing), width: sharedWidth };
+      }
+      const fittedWidth = Math.min(labelWidth, first ? leftSpace : rightSpace);
+      return { left: first ? leftEdge - fittedWidth : rightEdge, width: fittedWidth };
+    }
+
     function drawMonsterSprite(e, ex, ey, nowSec) {
+      const compact = compactArena.matches;
       const wkColor = state.blindMode ? '#f43f5e' : (SHIELD_COLORS[e.weakness] || '#fbbf24');
+      const keyChar = e.weakness === 'metal' ? 'Q' : (e.weakness === 'crystal' ? 'W' : 'E');
       const bob = Math.sin(nowSec * 5 + (e.animSeed || 0)) * (e.isBoss ? 4.5 : 3.0);
       const scale = e.isBoss ? 1.48 : 1.0;
 
@@ -3584,13 +3636,15 @@
         ctx.arc(0, 0, pulseR, 0, Math.PI * 2);
         ctx.stroke();
 
-        ctx.fillStyle = wkColor;
-        ctx.font = `800 11px ${canvasCjkFamilies}, sans-serif`;
-        ctx.textAlign = 'center';
-        const hintLabel = state.blindMode
-          ? '♪ 盲聽辨位彈反! [Q/W/E]'
-          : `⚡ 舉盾彈反: ${SHIELD_NAMES[e.weakness]}`;
-        ctx.fillText(hintLabel, 0, -38 * scale);
+        if (!compact) {
+          ctx.fillStyle = wkColor;
+          ctx.font = `800 11px ${canvasCjkFamilies}, sans-serif`;
+          ctx.textAlign = 'center';
+          const hintLabel = state.blindMode
+            ? '♪ 盲聽辨位彈反! [Q/W/E]'
+            : `⚡ 舉盾彈反: ${SHIELD_NAMES[e.weakness]}`;
+          ctx.fillText(hintLabel, 0, -38 * scale);
+        }
       }
 
       // Draw Distinct Silhouette by Act / Monster Type
@@ -3694,7 +3748,6 @@
         ctx.fillStyle = wkColor;
         ctx.font = '900 9px "JetBrains Mono", monospace';
         ctx.textAlign = 'center';
-        const keyChar = e.weakness === 'metal' ? 'Q' : (e.weakness === 'crystal' ? 'W' : 'E');
         ctx.fillText(keyChar, 18, -13);
       }
 
@@ -3702,28 +3755,65 @@
 
       // Monster Nameplate & Crisp Segmented Health Bar
       ctx.save();
-      const topY = ey - (e.isBoss ? 48 : 34);
-      const hpW = e.isBoss ? 86 : 54;
+      const nameplateY = ey - (e.isBoss ? 48 : 34);
+      let hpW = e.isBoss ? 86 : 54;
+      let hpLeft = ex - hpW / 2;
+      let hpTop = nameplateY;
+      let labelX = ex;
+      let laneY = ey;
+      let labelWidth;
+      if (compact) {
+        // Fit enemy annotations between the neighboring lane centers.
+        const box = getCompactEnemyLabelBox(e, ex, canvas.width / window.devicePixelRatio);
+        laneY = getLaneYRatio(e.lane) * canvas.height / window.devicePixelRatio;
+        labelWidth = box.width;
+        hpW = Math.min(e.isBoss ? 44 : 34, labelWidth - 4);
+        labelX = box.left + labelWidth / 2;
+        hpLeft = labelX - hpW / 2;
+        hpTop = laneY - 7.5;
+      }
       const hpRatio = Math.max(0, e.hp / e.maxHp);
 
       ctx.fillStyle = 'rgba(9, 13, 22, 0.92)';
       ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.roundRect(ex - hpW / 2 - 2, topY - 2, hpW + 4, 9, 4);
+      ctx.roundRect(hpLeft - 2, hpTop - 2, hpW + 4, 9, 4);
       ctx.fill();
       ctx.stroke();
 
       ctx.fillStyle = e.isBoss ? '#f59e0b' : '#f43f5e';
       ctx.beginPath();
-      ctx.roundRect(ex - hpW / 2, topY, hpW * hpRatio, 5, 2.5);
+      ctx.roundRect(hpLeft, hpTop, hpW * hpRatio, 5, 2.5);
       ctx.fill();
+
+      const name = `${e.name} (${Math.max(0, Math.ceil(e.hp))})`;
+      if (compact) {
+        ctx.textAlign = 'center';
+        ctx.font = `800 10px ${canvasCjkFamilies}, sans-serif`;
+        if (e.telegraphing) {
+          ctx.fillStyle = wkColor;
+          const hint = state.blindMode ? '盲聽 Q/W/E' : `彈反 [${keyChar}]`;
+          ctx.fillText(hint, labelX, laneY - 13, labelWidth);
+        }
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillText(name, labelX, laneY + 10, labelWidth);
+
+        const poison = e.dotStacks > 0 ? `中毒×${e.dotStacks}` : '';
+        const stun = e.stunTimer > 0 ? `暈眩 ${e.stunTimer.toFixed(1)}s` : '';
+        if (poison || stun) {
+          ctx.fillStyle = stun ? '#38bdf8' : '#e879f9';
+          ctx.fillText(poison && stun ? `${poison} · ${stun}` : poison || stun, labelX, laneY + 21, labelWidth);
+        }
+        ctx.restore();
+        return;
+      }
 
       // HP Numeric Readout & Name
       ctx.fillStyle = '#f8fafc';
       ctx.font = `${e.isBoss ? '900 11px' : '700 10px'} ${canvasCjkFamilies}, sans-serif`;
       ctx.textAlign = 'center';
-      ctx.fillText(`${e.name} (${Math.max(0, Math.ceil(e.hp))})`, ex, ey + (e.isBoss ? 40 : 29));
+      ctx.fillText(name, ex, ey + (e.isBoss ? 40 : 29));
 
       if (e.dotStacks > 0) {
         ctx.fillStyle = '#e879f9';
@@ -3733,7 +3823,7 @@
       if (e.stunTimer > 0) {
         ctx.fillStyle = '#38bdf8';
         ctx.font = `800 10px ${canvasCjkFamilies}, sans-serif`;
-        ctx.fillText(`❄️ 冰封/暈眩 ${e.stunTimer.toFixed(1)}s`, ex, topY - 6);
+        ctx.fillText(`❄️ 冰封/暈眩 ${e.stunTimer.toFixed(1)}s`, ex, nameplateY - 6);
       }
       ctx.restore();
     }
@@ -3939,9 +4029,11 @@
         ctx.ellipse(portalX, y, 8, 22, 0, 0, Math.PI * 2);
         ctx.stroke();
 
-        ctx.fillStyle = isSelected ? '#fde047' : 'rgba(148, 163, 184, 0.50)';
-        ctx.font = `700 10px "JetBrains Mono", ${canvasCjkFamilies}, monospace`;
-        ctx.fillText(laneLabels[lane], w * 0.17, y - 30);
+        if (!compactArena.matches) {
+          ctx.fillStyle = isSelected ? '#fde047' : 'rgba(148, 163, 184, 0.50)';
+          ctx.font = `700 10px "JetBrains Mono", ${canvasCjkFamilies}, monospace`;
+          ctx.fillText(laneLabels[lane], w * 0.17, y - 30);
+        }
         ctx.restore();
       });
 
@@ -4164,6 +4256,16 @@
           releaseActiveCast();
         }
       });
+
+      const telemetryToggle = document.getElementById('btnTelemetryToggle');
+      telemetryToggle.addEventListener('click', () => {
+        const expanded = telemetryToggle.getAttribute('aria-expanded') === 'true';
+        telemetryToggle.setAttribute('aria-expanded', String(!expanded));
+      });
+      const handDetails = document.getElementById('showHandDetails');
+      const syncHandDetails = () => document.getElementById('handContainer').toggleAttribute('data-compact', !handDetails.checked);
+      handDetails.addEventListener('change', syncHandDetails);
+      syncHandDetails();
 
       canvas.addEventListener('click', (e) => {
         audio.init();
