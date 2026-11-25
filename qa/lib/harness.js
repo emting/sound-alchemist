@@ -27,7 +27,7 @@ async function openGame(page) {
   page.on('requestfailed', (r) => errors.push({ kind: 'requestfailed', text: `${r.url()} ${r.failure() ? r.failure().errorText : ''}` }));
   page.on('response', (r) => { if (r.status() >= 400) errors.push({ kind: 'http', text: `${r.status()} ${r.url()}` }); });
   await page.goto(await gameUrl());
-  await page.waitForFunction(() => window.__qa && window.__qa.hooked && window.tailwind && typeof state === 'object' && state.hand.length > 0);
+  await page.waitForFunction(() => window.__qa && window.__qa.hooked && typeof state === 'object' && state.hand.length > 0);
   await page.evaluate(() => document.fonts.ready);
   const hookError = await page.evaluate(() => window.__qa.hookError || null);
   if (hookError) throw new Error(hookError);
