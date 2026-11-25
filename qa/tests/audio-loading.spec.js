@@ -48,6 +48,7 @@ test('starter sounds are prioritized, on-demand sounds jump the queue, and undec
 test('offline reload starts an MP3 from the service worker cache', async ({ page, context }, testInfo) => {
   test.skip(!HTTP, 'needs QA_HTTP=1');
   await page.addInitScript(() => {
+    try { localStorage.setItem('soundAlchemist.tutorialDone', '1'); } catch (e) {}
     if (navigator.serviceWorker.controller) return;
     const register = navigator.serviceWorker.register.bind(navigator.serviceWorker);
     navigator.serviceWorker.register = (...args) => new Promise((resolve, reject) => {
@@ -55,6 +56,9 @@ test('offline reload starts an MP3 from the service worker cache', async ({ page
     });
   });
   await page.goto(await gameUrl());
+  await page.waitForFunction(() => state.awaitingStart && state.hand.length === 5);
+  await page.locator('#btnStartGame').click();
+  await page.waitForFunction(() => !state.awaitingStart && state.enemies.length === 4);
   await page.waitForFunction(() => audioAssets.summary().loaded === 40, null, { timeout: 60000 });
   expect(await page.evaluate(() => navigator.serviceWorker.controller)).toBeNull();
   await page.evaluate(() => { window.allowWorkerRegistration(); });
@@ -71,9 +75,12 @@ test('offline reload starts an MP3 from the service worker cache', async ({ page
     page.reload(),
   ]);
   expect(responses.every(response => response.ok() && response.fromServiceWorker())).toBe(true);
-  await page.waitForFunction(() => state.hand.length > 0);
+  await page.waitForFunction(() => state.awaitingStart && state.hand.length > 0);
+  await page.locator('#btnStartGame').click();
+  await page.waitForFunction(() => !state.awaitingStart && state.enemies.length === 4);
   expect(await page.evaluate(() => navigator.onLine)).toBe(false);
   await expect(page.locator('#codexModal')).toHaveCSS('display', 'none');
+  await page.locator('#btnMobileMenu').click();
   await page.locator('#btnOpenCodex').click();
   await page.waitForFunction(() => audioAssets.has('C01'));
   await page.evaluate(() => {
