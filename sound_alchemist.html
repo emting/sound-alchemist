@@ -3693,13 +3693,19 @@
       let hpW = e.isBoss ? 86 : 54;
       let hpLeft = ex - hpW / 2;
       let hpTop = nameplateY;
+      let labelX = ex;
+      let laneY = ey;
+      const labelWidth = 76;
       if (compact) {
-        // Keep the bar beside its sprite and inside the same tappable lane.
+        // Fit enemy annotations between the neighboring lane centers.
+        laneY = getLaneYRatio(e.lane) * canvas.height / window.devicePixelRatio;
         hpW = e.isBoss ? 44 : 34;
         const gap = e.isBoss ? 38 : 28;
-        hpLeft = ex - gap - hpW;
-        if (hpLeft < 2) hpLeft = ex + gap;
-        hpTop = ey - 2.5;
+        let labelLeft = ex - gap - labelWidth;
+        if (labelLeft < 2) labelLeft = ex + gap;
+        labelX = labelLeft + labelWidth / 2;
+        hpLeft = labelX - hpW / 2;
+        hpTop = laneY - 7.5;
       }
       const hpRatio = Math.max(0, e.hp / e.maxHp);
 
@@ -3716,20 +3722,33 @@
       ctx.roundRect(hpLeft, hpTop, hpW * hpRatio, 5, 2.5);
       ctx.fill();
 
-      if (compact && e.telegraphing) {
-        // Keep the cue with its health bar, clear of the neighboring lane's bars.
-        ctx.fillStyle = wkColor;
-        ctx.font = '800 10px "Noto Sans TC", sans-serif';
+      const name = `${e.name} (${Math.max(0, Math.ceil(e.hp))})`;
+      if (compact) {
         ctx.textAlign = 'center';
-        const hint = state.blindMode ? '盲聽 Q/W/E' : `彈反 [${keyChar}]`;
-        ctx.fillText(hint, hpLeft + hpW / 2, hpTop - 5);
+        ctx.font = '800 10px "Noto Sans TC", sans-serif';
+        if (e.telegraphing) {
+          ctx.fillStyle = wkColor;
+          const hint = state.blindMode ? '盲聽 Q/W/E' : `彈反 [${keyChar}]`;
+          ctx.fillText(hint, labelX, laneY - 13, labelWidth);
+        }
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillText(name, labelX, laneY + 10, labelWidth);
+
+        const poison = e.dotStacks > 0 ? `中毒×${e.dotStacks}` : '';
+        const stun = e.stunTimer > 0 ? `暈眩 ${e.stunTimer.toFixed(1)}s` : '';
+        if (poison || stun) {
+          ctx.fillStyle = stun ? '#38bdf8' : '#e879f9';
+          ctx.fillText(poison && stun ? `${poison} · ${stun}` : poison || stun, labelX, laneY + 21, labelWidth);
+        }
+        ctx.restore();
+        return;
       }
 
       // HP Numeric Readout & Name
       ctx.fillStyle = '#f8fafc';
       ctx.font = e.isBoss ? '900 11px "Noto Sans TC", sans-serif' : '700 10px "Noto Sans TC", sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(`${e.name} (${Math.max(0, Math.ceil(e.hp))})`, ex, ey + (e.isBoss ? 40 : 29));
+      ctx.fillText(name, ex, ey + (e.isBoss ? 40 : 29));
 
       if (e.dotStacks > 0) {
         ctx.fillStyle = '#e879f9';
@@ -3945,9 +3964,11 @@
         ctx.ellipse(portalX, y, 8, 22, 0, 0, Math.PI * 2);
         ctx.stroke();
 
-        ctx.fillStyle = isSelected ? '#fde047' : 'rgba(148, 163, 184, 0.50)';
-        ctx.font = '700 10px "JetBrains Mono", monospace';
-        ctx.fillText(laneLabels[lane], w * 0.17, y - 30);
+        if (!compactArena.matches) {
+          ctx.fillStyle = isSelected ? '#fde047' : 'rgba(148, 163, 184, 0.50)';
+          ctx.font = '700 10px "JetBrains Mono", monospace';
+          ctx.fillText(laneLabels[lane], w * 0.17, y - 30);
+        }
         ctx.restore();
       });
 
