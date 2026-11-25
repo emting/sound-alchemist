@@ -20,6 +20,16 @@ test('first-run gate, guided lane and cast tutorial, skip, reload, and restart',
   }));
   expect(initial).toMatchObject({ hp: 80, mana: 3, enemies: 0, tutorialStep: 0, tutorialDone: null });
   await expect(page.locator('#startOverlay')).toBeVisible();
+  await expect(page.locator('#btnStartGame')).toBeFocused();
+  expect(await page.evaluate(() => ({
+    headerInert: document.querySelector('header').hasAttribute('inert'),
+    mainInert: document.querySelector('main').hasAttribute('inert')
+  }))).toEqual({ headerInert: true, mainInert: true });
+  await page.keyboard.press('Tab');
+  expect(await page.evaluate(() => document.getElementById('startOverlay').contains(document.activeElement))).toBe(true);
+  const laneBeforeOverlayShortcut = await page.evaluate(() => state.selectedLane);
+  await page.keyboard.press('3');
+  expect(await page.evaluate(() => state.selectedLane)).toBe(laneBeforeOverlayShortcut);
   await page.waitForTimeout(15000);
   expect(await page.evaluate(() => ({
     hp: state.hp,
@@ -119,4 +129,87 @@ test('first-run gate, guided lane and cast tutorial, skip, reload, and restart',
   await page.waitForFunction(() => !state.awaitingStart && state.tutorialStep === 0 && state.enemies.length === 4);
   await expect(page.locator('#startOverlay')).toHaveCSS('display', 'none');
   expect(errors).toEqual([]);
+});
+
+test('preset changes during step 2 restore the new deck after the tutorial cast', async ({ page }) => {
+  const server = await serve(path.resolve(__dirname, '..', '..'));
+  await page.goto(`${server.origin}/sound_alchemist.html`);
+  await page.waitForFunction(() => typeof state === 'object' && state.hand.length === 5 && state.awaitingStart);
+  await page.locator('#btnStartGame').click();
+  await expect.poll(() => page.evaluate(() => state.tutorialStep)).toBe(1);
+  await page.locator('#btnLane2').click();
+  await expect.poll(() => page.evaluate(() => state.tutorialStep)).toBe(2);
+  await page.locator('#selectPresetDeck').selectOption('arcane');
+
+  const presetStart = await page.evaluate(() => ({
+    deckPreset: state.deckPreset,
+    masterIds: state.masterDeck.map(card => card.id),
+    hand: state.tutorialSnapshot.hand.map(card => card.id),
+    drawPile: state.tutorialSnapshot.drawPile.map(card => card.id),
+    discardPile: state.tutorialSnapshot.discardPile.map(card => card.id),
+    mana: state.tutorialSnapshot.mana,
+    chargedCardIndex: state.hand.findIndex(card => getEffectiveCardCharge(card) > 0.01),
+    chargedCardCharge: state.hand.find(card => getEffectiveCardCharge(card) > 0.01)
+      ? getEffectiveCardCharge(state.hand.find(card => getEffectiveCardCharge(card) > 0.01))
+      : 0
+  }));
+  expect(presetStart.deckPreset).toBe('arcane');
+  expect(presetStart.chargedCardIndex).toBeGreaterThanOrEqual(0);
+  expect(presetStart.hand.every(id => presetStart.masterIds.includes(id))).toBe(true);
+  expect(presetStart.drawPile.every(id => presetStart.masterIds.includes(id))).toBe(true);
+
+  const cardBox = await page.locator('#handContainer > *').nth(presetStart.chargedCardIndex).boundingBox();
+  expect(cardBox).not.toBeNull();
+  await page.mouse.move(cardBox.x + cardBox.width / 2, cardBox.y + cardBox.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(presetStart.chargedCardCharge * 820);
+  await page.mouse.up();
+  await page.waitForFunction(() => state.tutorialStep === 0 && state.enemies.length === 4);
+
+  expect(await page.evaluate(() => ({
+    deckPreset: state.deckPreset,
+    hand: state.hand.map(card => card.id),
+    drawPile: state.drawPile.map(card => card.id),
+    discardPile: state.discardPile.map(card => card.id),
+    mana: state.mana
+  }))).toEqual({
+    deckPreset: presetStart.deckPreset,
+    hand: presetStart.hand,
+    drawPile: presetStart.drawPile,
+    discardPile: presetStart.discardPile,
+    mana: presetStart.mana
+  });
+});
+
+test('tutorial overload restores wave 1 without carrying the cast stun', async ({ page }) => {
+  const server = await serve(path.resolve(__dirname, '..', '..'));
+  await page.goto(`${server.origin}/sound_alchemist.html`);
+  await page.waitForFunction(() => typeof state === 'object' && state.hand.length === 5 && state.awaitingStart);
+  await page.locator('#btnStartGame').click();
+  await expect.poll(() => page.evaluate(() => state.tutorialStep)).toBe(1);
+  await page.locator('#btnLane2').click();
+  await expect.poll(() => page.evaluate(() => state.tutorialStep)).toBe(2);
+
+  const chargedCard = await page.evaluate(() => {
+    const index = state.hand.findIndex(card => getEffectiveCardCharge(card) > 0.01);
+    return index < 0 ? null : { index };
+  });
+  expect(chargedCard).not.toBeNull();
+  const cardBox = await page.locator('#handContainer > *').nth(chargedCard.index).boundingBox();
+  expect(cardBox).not.toBeNull();
+  await page.mouse.move(cardBox.x + cardBox.width / 2, cardBox.y + cardBox.height / 2);
+  await page.mouse.down();
+  await page.waitForFunction(() => state.tutorialStep === 0 && state.enemies.length === 4, { timeout: 15000 });
+
+  expect(await page.evaluate(() => ({
+    stunRemaining: state.stunRemaining,
+    activeCast: state.activeCast,
+    tutorialSnapshot: state.tutorialSnapshot,
+    totalCasts: state.totalCasts
+  }))).toEqual({
+    stunRemaining: 0,
+    activeCast: null,
+    tutorialSnapshot: null,
+    totalCasts: 0
+  });
 });
