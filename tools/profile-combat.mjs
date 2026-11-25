@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 
 const require = createRequire(new URL('../qa/package.json', import.meta.url));
 const { chromium } = require('playwright');
@@ -15,7 +16,7 @@ fs.mkdirSync(output, { recursive: true });
 const gpu = options.includes('--gpu');
 const parry = options.includes('--parry');
 const rates = (options.find(arg => arg.startsWith('--cpu='))?.slice(6) || '1,4').split(',').map(Number);
-const { origin } = await serve(path.resolve(process.env.PROFILE_ROOT || path.join(import.meta.dirname, '..')));
+const { origin } = await serve(path.resolve(process.env.PROFILE_ROOT || path.join(path.dirname(fileURLToPath(import.meta.url)), '..')));
 const browser = await chromium.launch({
   ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : { channel: 'chrome' }),
   headless: !options.includes('--headed'),
