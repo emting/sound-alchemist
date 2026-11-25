@@ -3340,8 +3340,6 @@
     const canvas = document.getElementById('battleCanvas');
     const ctx = canvas.getContext('2d');
     const compactArena = window.matchMedia('not all and (min-width: 481px)');
-    const monsterHealthBar = { width: 54, offset: 34, edge: 2, height: 9 };
-    const bossHealthBar = { ...monsterHealthBar, width: 86, offset: 48 };
 
     function resizeCanvas() {
       const rect = (compactArena.matches ? canvas : canvas.parentElement).getBoundingClientRect();
@@ -3688,21 +3686,31 @@
 
       // Monster Nameplate & Crisp Segmented Health Bar
       ctx.save();
-      const { width: hpW, offset, edge, height } = e.isBoss ? bossHealthBar : monsterHealthBar;
-      const topY = ey - offset;
+      const nameplateY = ey - (e.isBoss ? 48 : 34);
+      let hpW = e.isBoss ? 86 : 54;
+      let hpLeft = ex - hpW / 2;
+      let hpTop = nameplateY;
+      if (compactArena.matches) {
+        // Keep the bar beside its sprite and inside the same tappable lane.
+        hpW = e.isBoss ? 44 : 34;
+        const gap = e.isBoss ? 38 : 28;
+        hpLeft = ex - gap - hpW;
+        if (hpLeft < 2) hpLeft = ex + gap;
+        hpTop = ey - 2.5;
+      }
       const hpRatio = Math.max(0, e.hp / e.maxHp);
 
       ctx.fillStyle = 'rgba(9, 13, 22, 0.92)';
       ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.roundRect(ex - hpW / 2 - edge, topY - edge, hpW + edge * 2, height, 4);
+      ctx.roundRect(hpLeft - 2, hpTop - 2, hpW + 4, 9, 4);
       ctx.fill();
       ctx.stroke();
 
       ctx.fillStyle = e.isBoss ? '#f59e0b' : '#f43f5e';
       ctx.beginPath();
-      ctx.roundRect(ex - hpW / 2, topY, hpW * hpRatio, 5, 2.5);
+      ctx.roundRect(hpLeft, hpTop, hpW * hpRatio, 5, 2.5);
       ctx.fill();
 
       // HP Numeric Readout & Name
@@ -3719,7 +3727,7 @@
       if (e.stunTimer > 0) {
         ctx.fillStyle = '#38bdf8';
         ctx.font = '800 10px "Noto Sans TC", sans-serif';
-        ctx.fillText(`❄️ 冰封/暈眩 ${e.stunTimer.toFixed(1)}s`, ex, topY - 6);
+        ctx.fillText(`❄️ 冰封/暈眩 ${e.stunTimer.toFixed(1)}s`, ex, nameplateY - 6);
       }
       ctx.restore();
     }
@@ -4168,18 +4176,8 @@
           return;
         }
         const rect = canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        const clickY = y / rect.height;
-        // In the shorter arena a health bar can extend into the lane above its enemy.
-        const tappedEnemy = compactArena.matches && state.enemies.findLast((enemy) => {
-          const bar = enemy.isBoss ? bossHealthBar : monsterHealthBar;
-          const centerX = enemy.x * rect.width;
-          const top = (getLaneYRatio(enemy.lane) + (enemy.yOffset || 0)) * rect.height - bar.offset - bar.edge;
-          return Math.abs(x - centerX) <= bar.width / 2 + bar.edge && y >= top && y <= top + bar.height;
-        });
-        if (tappedEnemy) state.selectedLane = tappedEnemy.lane;
-        else if (clickY < 0.39) state.selectedLane = 0;
+        const clickY = (e.clientY - rect.top) / rect.height;
+        if (clickY < 0.39) state.selectedLane = 0;
         else if (clickY < 0.65) state.selectedLane = 1;
         else state.selectedLane = 2;
         updateHUD();
