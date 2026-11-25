@@ -39,13 +39,23 @@ async function cacheFirst(request) {
 }
 
 self.addEventListener('message', event => {
-  if (event.data !== 'warm-shell') return;
+  if (event.data?.type !== 'warm-shell') return;
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
     const game = await cache.match(GAME);
-    if (game && (await game.text()).includes(TAILWIND)) {
-      await cacheFirst(new Request(TAILWIND, { mode: 'no-cors', priority: 'low' }));
-    }
+    const warmStyles = async () => {
+      if (game && (await game.text()).includes(TAILWIND)) {
+        await cacheFirst(new Request(TAILWIND, { mode: 'no-cors', priority: 'low' }));
+      }
+    };
+    const warmAudio = async () => {
+      for (const url of event.data.audio) {
+        if (typeof url === 'string' && url.startsWith(AUDIO)) {
+          await cacheFirst(new Request(url, { priority: 'low' })).catch(() => {});
+        }
+      }
+    };
+    await Promise.all([warmStyles(), warmAudio()]);
   })().catch(() => {}));
 });
 

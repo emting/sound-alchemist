@@ -953,7 +953,6 @@
           registration.then(() => worker.controller ? undefined : control),
           new Promise(resolve => { timer = setTimeout(resolve, 1500); })
         ]);
-        if (worker.controller) worker.controller.postMessage('warm-shell');
       } catch (e) {
         // Audio can still load without a service worker.
       } finally {
@@ -978,6 +977,13 @@
         this.failed = new Set();
         this.active = 0;
         this.idleScheduled = false;
+        this.earlyAudio = new Set();
+        if (/^https?:$/.test(location.protocol) && navigator.serviceWorker && !navigator.serviceWorker.controller) {
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            navigator.serviceWorker.controller?.postMessage({ type: 'warm-shell', audio: [...this.earlyAudio] });
+            this.earlyAudio.clear();
+          }, { once: true });
+        }
         this.gainLevel = 0.6;
         this.timeoutMs = 8000;
       }
@@ -986,7 +992,9 @@
         const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
         const timer = ctrl ? setTimeout(() => ctrl.abort(), this.timeoutMs) : null;
         try {
-          const res = await fetch(this.baseUrl + path, { signal: ctrl?.signal, priority });
+          const url = new URL(this.baseUrl + path, location.href);
+          if (navigator.serviceWorker && !navigator.serviceWorker.controller) this.earlyAudio.add(url.href);
+          const res = await fetch(url, { signal: ctrl?.signal, priority });
           if (!res.ok) throw new Error(`HTTP ${res.status} for ${path}`);
           return type === 'json' ? await res.json() : await res.arrayBuffer();
         } finally {

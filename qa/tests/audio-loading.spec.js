@@ -47,11 +47,23 @@ test('starter sounds are prioritized, on-demand sounds jump the queue, and undec
 
 test('offline reload starts an MP3 from the service worker cache', async ({ page, context }, testInfo) => {
   test.skip(!HTTP, 'needs QA_HTTP=1');
+  await page.addInitScript(() => {
+    if (navigator.serviceWorker.controller) return;
+    const register = navigator.serviceWorker.register.bind(navigator.serviceWorker);
+    navigator.serviceWorker.register = (...args) => new Promise((resolve, reject) => {
+      window.allowWorkerRegistration = () => register(...args).then(resolve, reject);
+    });
+  });
   await page.goto(await gameUrl());
+  await page.waitForFunction(() => audioAssets.summary().loaded === 40, null, { timeout: 60000 });
+  expect(await page.evaluate(() => navigator.serviceWorker.controller)).toBeNull();
+  await page.evaluate(() => { window.allowWorkerRegistration(); });
   const tailwind = 'https://cdn.tailwindcss.com/3.4.17';
   const hasCdnScript = await page.locator(`script[src="${tailwind}"]`).count() > 0;
-  await page.waitForFunction(async src => navigator.serviceWorker.controller && audioAssets.summary().loaded === 40 &&
-    (!src || !!(await caches.match(src))), hasCdnScript ? tailwind : null, { timeout: 60000 });
+  const cached = ['assets/audio/manifest.json', 'assets/audio/envelopes/C01.json', 'assets/audio/sfx/C01.mp3'];
+  if (hasCdnScript) cached.push(tailwind);
+  await page.waitForFunction(async urls => navigator.serviceWorker.controller &&
+    (await Promise.all(urls.map(url => caches.match(url)))).every(Boolean), cached, { timeout: 60000 });
   await context.setOffline(true);
   const response = await page.reload();
   expect(response.fromServiceWorker()).toBe(true);
