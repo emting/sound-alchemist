@@ -3545,6 +3545,37 @@
     }
 
     // Draw Bespoke Multi-Part Monster & Boss Sprites (Zero Plain Boxes!)
+    function getCompactEnemyLabelBox(enemy, x, width) {
+      const labelWidth = 76;
+      const gap = enemy.isBoss ? 38 : 28;
+      const margin = 2;
+      const companion = state.enemies.find(other => other !== enemy && other.lane === enemy.lane);
+      const companionX = companion ? companion.x * width : x;
+      if (!companion || Math.abs(x - companionX) >= labelWidth + 2 * gap) {
+        const left = x - gap - labelWidth;
+        return { left: left >= margin ? left : x + gap, width: labelWidth };
+      }
+
+      // The current waves spawn at most two enemies on one lane. Use the outer
+      // flanks so neither readout can land over the other enemy's sprite.
+      const leftEdge = Math.min(x, companionX) - gap;
+      const rightEdge = Math.max(x, companionX) + gap;
+      const leftSpace = leftEdge - margin;
+      const rightSpace = width - margin - rightEdge;
+      const first = x === companionX ? state.enemies.indexOf(enemy) < state.enemies.indexOf(companion) : x < companionX;
+      const spacing = 4;
+      const pairWidth = 2 * labelWidth + spacing;
+      const useLeft = rightSpace < labelWidth && (leftSpace >= pairWidth || (rightSpace < 42 && leftSpace > rightSpace));
+      const useRight = leftSpace < labelWidth && (rightSpace >= pairWidth || (leftSpace < 42 && rightSpace > leftSpace));
+      if (useLeft || useRight) {
+        const sharedWidth = Math.min(labelWidth, ((useLeft ? leftSpace : rightSpace) - spacing) / 2);
+        const start = useLeft ? leftEdge - 2 * sharedWidth - spacing : rightEdge;
+        return { left: start + (first ? 0 : sharedWidth + spacing), width: sharedWidth };
+      }
+      const fittedWidth = Math.min(labelWidth, first ? leftSpace : rightSpace);
+      return { left: first ? leftEdge - fittedWidth : rightEdge, width: fittedWidth };
+    }
+
     function drawMonsterSprite(e, ex, ey, nowSec) {
       const compact = compactArena.matches;
       const wkColor = state.blindMode ? '#f43f5e' : (SHIELD_COLORS[e.weakness] || '#fbbf24');
@@ -3695,15 +3726,14 @@
       let hpTop = nameplateY;
       let labelX = ex;
       let laneY = ey;
-      const labelWidth = 76;
+      let labelWidth;
       if (compact) {
         // Fit enemy annotations between the neighboring lane centers.
+        const box = getCompactEnemyLabelBox(e, ex, canvas.width / window.devicePixelRatio);
         laneY = getLaneYRatio(e.lane) * canvas.height / window.devicePixelRatio;
-        hpW = e.isBoss ? 44 : 34;
-        const gap = e.isBoss ? 38 : 28;
-        let labelLeft = ex - gap - labelWidth;
-        if (labelLeft < 2) labelLeft = ex + gap;
-        labelX = labelLeft + labelWidth / 2;
+        labelWidth = box.width;
+        hpW = Math.min(e.isBoss ? 44 : 34, labelWidth - 4);
+        labelX = box.left + labelWidth / 2;
         hpLeft = labelX - hpW / 2;
         hpTop = laneY - 7.5;
       }
