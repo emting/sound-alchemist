@@ -1,10 +1,11 @@
 // Bump this version whenever the packed audio files or manifest change.
 const PREFIX = 'sound-alchemist:' + self.registration.scope + ':';
-const CACHE = PREFIX + 'v2';
+const CACHE = PREFIX + 'v3';
 const HOME = new URL('index.html', self.registration.scope).href;
 const GAME = new URL('sound_alchemist.html', self.registration.scope).href;
 const AUDIO = new URL('assets/audio/', self.registration.scope).href;
-const TAILWIND = 'https://cdn.tailwindcss.com/3.4.17';
+const STYLES = new URL('assets/css/tailwind.css', self.registration.scope).href;
+const CJK_FONT = new URL('assets/fonts/noto-sans-tc.woff2', self.registration.scope).href;
 
 async function priorCaches() {
   return (await caches.keys()).filter(name => name.startsWith(PREFIX) && name !== CACHE);
@@ -17,8 +18,6 @@ async function refreshCachedAudio(cache) {
     for (const request of await previous.keys()) {
       if (request.url.startsWith(AUDIO)) priorAudio.add(request.url);
     }
-    const tailwind = await previous.match(TAILWIND);
-    if (tailwind) await cache.put(TAILWIND, tailwind);
   }
   if (!priorAudio.size) return;
 
@@ -36,7 +35,7 @@ async function refreshCachedAudio(cache) {
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
-    await cache.addAll([HOME, GAME]);
+    await cache.addAll([HOME, GAME, STYLES, CJK_FONT]);
     await refreshCachedAudio(cache);
     await self.skipWaiting();
   })());
@@ -63,7 +62,7 @@ async function cacheFirst(request) {
   const cached = await cache.match(request);
   if (cached) return cached;
   const response = await fetch(request);
-  if (response.ok || (request.url === TAILWIND && response.type === 'opaque')) {
+  if (response.ok) {
     return remember(cache, request, response);
   }
   return response;
@@ -72,21 +71,11 @@ async function cacheFirst(request) {
 self.addEventListener('message', event => {
   if (event.data?.type !== 'warm-shell') return;
   event.waitUntil((async () => {
-    const cache = await caches.open(CACHE);
-    const game = await cache.match(GAME);
-    const warmStyles = async () => {
-      if (game && (await game.text()).includes(TAILWIND)) {
-        await cacheFirst(new Request(TAILWIND, { mode: 'no-cors', priority: 'low' }));
+    for (const url of event.data.audio) {
+      if (typeof url === 'string' && url.startsWith(AUDIO)) {
+        await cacheFirst(new Request(url, { priority: 'low' })).catch(() => {});
       }
-    };
-    const warmAudio = async () => {
-      for (const url of event.data.audio) {
-        if (typeof url === 'string' && url.startsWith(AUDIO)) {
-          await cacheFirst(new Request(url, { priority: 'low' })).catch(() => {});
-        }
-      }
-    };
-    await Promise.all([warmStyles(), warmAudio()]);
+    }
   })().catch(() => {}));
 });
 
@@ -97,7 +86,7 @@ async function networkFirst(request, key) {
     if (response.ok) return remember(cache, key, response);
     if (response.status < 500) return response;
   } catch (e) {
-    // Fall back to the installed page for offline navigation.
+    // Fall back to the cached response when offline.
   }
   return (await cache.match(key)) || Response.error();
 }
@@ -113,7 +102,9 @@ self.addEventListener('fetch', event => {
     } else if (path === GAME) {
       event.respondWith(networkFirst(request, GAME));
     }
-  } else if (request.url === TAILWIND || (path.startsWith(AUDIO) && !request.headers.has('Range'))) {
+  } else if (path === STYLES || path === CJK_FONT) {
+    event.respondWith(networkFirst(request, path));
+  } else if (path.startsWith(AUDIO) && !request.headers.has('Range')) {
     event.respondWith(cacheFirst(request));
   }
 });

@@ -58,18 +58,22 @@ test('offline reload starts an MP3 from the service worker cache', async ({ page
   await page.waitForFunction(() => audioAssets.summary().loaded === 40, null, { timeout: 60000 });
   expect(await page.evaluate(() => navigator.serviceWorker.controller)).toBeNull();
   await page.evaluate(() => { window.allowWorkerRegistration(); });
-  const tailwind = 'https://cdn.tailwindcss.com/3.4.17';
-  const hasCdnScript = await page.locator(`script[src="${tailwind}"]`).count() > 0;
-  const cached = [page.url(), 'assets/audio/manifest.json', 'assets/audio/envelopes/C01.json', 'assets/audio/sfx/C01.mp3'];
-  if (hasCdnScript) cached.push(tailwind);
-  await page.waitForFunction(async urls => navigator.serviceWorker.controller?.state === 'activated' &&
-    (await Promise.all(urls.map(url => caches.match(url)))).every(Boolean), cached, { timeout: 60000 });
+  const styles = 'assets/css/tailwind.css';
+  const font = 'assets/fonts/noto-sans-tc.woff2';
+  const cached = [page.url(), styles, font, 'assets/audio/manifest.json', 'assets/audio/envelopes/C01.json', 'assets/audio/sfx/C01.mp3'];
+  await expect.poll(() => page.evaluate(async urls => navigator.serviceWorker.controller?.state === 'activated' &&
+    (await Promise.all(urls.map(url => caches.match(url)))).every(Boolean), cached), { timeout: 60000 }).toBe(true);
+  const game = page.url();
   await context.setOffline(true);
-  const response = await page.goto(page.url());
-  expect(response.fromServiceWorker()).toBe(true);
+  const responses = await Promise.all([
+    page.waitForResponse(new URL(styles, game).href),
+    page.waitForResponse(new URL(font, game).href),
+    page.reload(),
+  ]);
+  expect(responses.every(response => response.ok() && response.fromServiceWorker())).toBe(true);
   await page.waitForFunction(() => state.hand.length > 0);
   expect(await page.evaluate(() => navigator.onLine)).toBe(false);
-  if (hasCdnScript) expect(await page.evaluate(() => Boolean(window.tailwind))).toBe(true);
+  await expect(page.locator('#codexModal')).toHaveCSS('display', 'none');
   await page.locator('#btnOpenCodex').click();
   await page.waitForFunction(() => audioAssets.has('C01'));
   await page.evaluate(() => {

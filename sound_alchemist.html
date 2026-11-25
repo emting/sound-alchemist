@@ -5,12 +5,37 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>《聲波鍊金術士》Audio-Synced Combat v3.0｜音訊同步 Roguelike 塔防網頁遊戲</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230f172a'/><path d='M4 16h4l3-8 4 16 4-12 3 4h6' fill='none' stroke='%23f59e0b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/></svg>">
-  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,600;0,700;1,400&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
   <style>
+    /* Use the same weight matches as the original font stylesheet. */
+    @font-face {
+      font-family: 'Noto Sans TC';
+      src: url('assets/fonts/noto-sans-tc.woff2') format('woff2');
+      font-weight: 400;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Noto Sans TC';
+      src: url('assets/fonts/noto-sans-tc.woff2') format('woff2');
+      font-weight: 500;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Noto Sans TC';
+      src: url('assets/fonts/noto-sans-tc.woff2') format('woff2');
+      font-weight: 700;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Noto Sans TC';
+      src: url('assets/fonts/noto-sans-tc.woff2') format('woff2');
+      font-weight: 900;
+      font-display: swap;
+    }
     :root {
+      --font-cjk: 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', 'Noto Sans CJK TC';
       --bg-primary: #070a12;
       --bg-panel: rgba(15, 22, 38, 0.88);
       --accent-main: #f59e0b;
@@ -27,7 +52,7 @@
       --card-glow: rgba(0, 245, 212, 0.25);
     }
     body {
-      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+      font-family: 'Inter', var(--font-cjk), sans-serif;
       background-color: var(--bg-primary);
       background-image:
         radial-gradient(circle at 12% 18%, rgba(245, 158, 11, 0.09) 0%, transparent 40%),
@@ -45,10 +70,10 @@
         linear-gradient(180deg, #06020e 0%, #140828 100%);
     }
     .font-mono-code {
-      font-family: 'JetBrains Mono', monospace;
+      font-family: 'JetBrains Mono', var(--font-cjk), monospace;
     }
-    .font-display-serif {
-      font-family: 'Cinzel', 'Noto Sans TC', serif;
+    .font-system {
+      font-family: ui-sans-serif, system-ui, var(--font-cjk), sans-serif;
     }
     /* CRT scanline overlay for Stylized Mode */
     .crt-overlay {
@@ -127,6 +152,7 @@
       border-radius: 9999px;
     }
   </style>
+  <link rel="stylesheet" href="assets/css/tailwind.css">
 </head>
 <body class="min-h-screen flex flex-col justify-between relative selection:bg-amber-500 selection:text-slate-950">
   <!-- CRT Scanline Layer -->
@@ -3151,7 +3177,7 @@
       if (tbody) {
         tbody.innerHTML = rows.map(r => `
           <tr class="hover:bg-slate-900/40">
-            <td class="py-2 px-3 font-sans font-semibold text-slate-200">${r.label}</td>
+            <td class="py-2 px-3 font-system font-semibold text-slate-200">${r.label}</td>
             <td class="py-2 px-3 ${r.dead ? 'text-rose-400' : 'text-emerald-400 font-bold'}">
               ${r.waves} / 18 波 (${r.dead ? '頭目戰陣亡' : '三幕全破'})
             </td>
@@ -3447,6 +3473,7 @@
     // =========================================================================
     const canvas = document.getElementById('battleCanvas');
     const ctx = canvas.getContext('2d');
+    const canvasCjkFamilies = getComputedStyle(document.documentElement).getPropertyValue('--font-cjk').trim();
     const compactArena = window.matchMedia('not all and (min-width: 481px)');
 
     function resizeCanvas() {
@@ -3563,7 +3590,7 @@
       t.fill();
 
       t.fillStyle = '#fde047';
-      t.font = '900 11px "Noto Sans TC", sans-serif';
+      t.font = `900 11px ${canvasCjkFamilies}, sans-serif`;
       t.textAlign = 'center';
       t.fillText('聲波鍊金塔', tx, ty + 54);
 
@@ -3711,7 +3738,7 @@
 
         if (!compact) {
           ctx.fillStyle = wkColor;
-          ctx.font = '800 11px "Noto Sans TC", sans-serif';
+          ctx.font = `800 11px ${canvasCjkFamilies}, sans-serif`;
           ctx.textAlign = 'center';
           const hintLabel = state.blindMode
             ? '♪ 盲聽辨位彈反! [Q/W/E]'
@@ -3863,7 +3890,7 @@
       const name = `${e.name} (${Math.max(0, Math.ceil(e.hp))})`;
       if (compact) {
         ctx.textAlign = 'center';
-        ctx.font = '800 10px "Noto Sans TC", sans-serif';
+        ctx.font = `800 10px ${canvasCjkFamilies}, sans-serif`;
         if (e.telegraphing) {
           ctx.fillStyle = wkColor;
           const hint = state.blindMode ? '盲聽 Q/W/E' : `彈反 [${keyChar}]`;
@@ -3884,7 +3911,7 @@
 
       // HP Numeric Readout & Name
       ctx.fillStyle = '#f8fafc';
-      ctx.font = e.isBoss ? '900 11px "Noto Sans TC", sans-serif' : '700 10px "Noto Sans TC", sans-serif';
+      ctx.font = `${e.isBoss ? '900 11px' : '700 10px'} ${canvasCjkFamilies}, sans-serif`;
       ctx.textAlign = 'center';
       ctx.fillText(name, ex, ey + (e.isBoss ? 40 : 29));
 
@@ -3895,7 +3922,7 @@
       }
       if (e.stunTimer > 0) {
         ctx.fillStyle = '#38bdf8';
-        ctx.font = '800 10px "Noto Sans TC", sans-serif';
+        ctx.font = `800 10px ${canvasCjkFamilies}, sans-serif`;
         ctx.fillText(`❄️ 冰封/暈眩 ${e.stunTimer.toFixed(1)}s`, ex, nameplateY - 6);
       }
       ctx.restore();
@@ -4104,7 +4131,7 @@
 
         if (!compactArena.matches) {
           ctx.fillStyle = isSelected ? '#fde047' : 'rgba(148, 163, 184, 0.50)';
-          ctx.font = '700 10px "JetBrains Mono", monospace';
+          ctx.font = `700 10px "JetBrains Mono", ${canvasCjkFamilies}, monospace`;
           ctx.fillText(laneLabels[lane], w * 0.17, y - 30);
         }
         ctx.restore();
@@ -4253,7 +4280,7 @@
         ctx.stroke();
 
         ctx.fillStyle = isInsidePeak ? '#fde047' : '#ffffff';
-        ctx.font = '900 14px "Noto Sans TC", sans-serif';
+        ctx.font = `900 14px ${canvasCjkFamilies}, sans-serif`;
         ctx.textAlign = 'center';
         ctx.fillText(isInsidePeak ? '★ PEAK (-1.0 dBFS)! 立即釋放! ★' : `詠唱蓄力: ${card.name}`, cx, cy - 5);
 
@@ -4293,7 +4320,7 @@
         ctx.save();
         ctx.globalAlpha = Math.max(0, ft.alpha);
         ctx.fillStyle = ft.color;
-        ctx.font = '900 13px "Noto Sans TC", sans-serif';
+        ctx.font = `900 13px ${canvasCjkFamilies}, sans-serif`;
         ctx.textAlign = 'center';
         ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
         ctx.shadowBlur = 6;
