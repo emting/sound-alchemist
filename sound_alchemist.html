@@ -80,6 +80,10 @@
       background: linear-gradient(145deg, rgba(28, 12, 54, 0.92) 0%, rgba(13, 5, 28, 0.96) 100%);
       box-shadow: 0 12px 36px -8px rgba(236, 72, 153, 0.22), inset 0 1px 0 0 rgba(0, 245, 212, 0.18);
     }
+    main .glass-panel {
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
     /* Collectible TCG Card Styling */
     .tcg-card {
       position: relative;
@@ -129,7 +133,7 @@
   <div class="crt-overlay fixed inset-0 z-40"></div>
 
   <!-- Top Navigation & Audio Synthesizer Console Header -->
-  <header class="w-full border-b border-slate-800/90 bg-slate-950/90 backdrop-blur-xl z-30 px-3 py-2.5 max-[481px]:py-1.5 max-[481px]:[&_.font-mono-code]:[font-family:inherit] shadow-xl">
+  <header class="w-full border-b border-slate-800/90 bg-slate-950/90 z-30 px-3 py-2.5 max-[481px]:py-1.5 max-[481px]:[&_.font-mono-code]:[font-family:inherit] shadow-xl">
     <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2 max-[481px]:gap-1">
       <!-- Brand Crest & Act Status -->
       <div class="flex items-center gap-3">
@@ -281,7 +285,7 @@
 
       <!-- Top-Left Stereo Lane Selector Console -->
       <div class="absolute top-3 inset-x-3 z-10 flex flex-wrap items-start justify-between gap-2 pointer-events-none max-[481px]:static max-[481px]:order-1 max-[481px]:grid max-[481px]:grid-cols-4 max-[481px]:gap-1 max-[481px]:p-1 max-[481px]:[&_button]:min-h-11">
-      <div class="flex items-center gap-1.5 bg-slate-950/85 backdrop-blur-xl border border-slate-700/80 rounded-xl p-1.5 z-10 shadow-xl pointer-events-auto max-[481px]:contents max-[481px]:[&>button]:pointer-events-auto">
+      <div class="flex items-center gap-1.5 bg-slate-950/85 border border-slate-700/80 rounded-xl p-1.5 z-10 shadow-xl pointer-events-auto max-[481px]:contents max-[481px]:[&>button]:pointer-events-auto">
         <span class="text-[11px] text-slate-300 px-1.5 font-bold max-[481px]:hidden">立體聲軌：</span>
         <button id="btnLane0" type="button" class="lane-btn px-2.5 py-1 rounded-lg text-xs font-mono-code font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
           <span class="max-[481px]:hidden">[1] 左聲道 L (-0.8)</span><span class="min-[481px]:hidden">左聲道</span>
@@ -298,7 +302,7 @@
       <button id="btnTelemetryToggle" type="button" aria-controls="telemetryPanel" aria-expanded="false" class="peer group min-[481px]:hidden pointer-events-auto rounded-lg border border-slate-700 bg-slate-900 px-1 text-xs font-bold text-sky-300">
         遙測 <span aria-hidden="true" class="group-aria-expanded:hidden">▾</span><span aria-hidden="true" class="hidden group-aria-expanded:inline">▴</span>
       </button>
-      <div id="telemetryPanel" class="ml-auto bg-slate-950/88 backdrop-blur-xl border border-slate-700/80 rounded-xl px-3.5 py-2 text-right z-10 max-w-xs shadow-xl pointer-events-auto max-[481px]:hidden max-[481px]:peer-aria-expanded:block max-[481px]:col-span-4 max-[481px]:ml-0 max-[481px]:max-w-none">
+      <div id="telemetryPanel" class="ml-auto bg-slate-950/88 border border-slate-700/80 rounded-xl px-3.5 py-2 text-right z-10 max-w-xs shadow-xl pointer-events-auto max-[481px]:hidden max-[481px]:peer-aria-expanded:block max-[481px]:col-span-4 max-[481px]:ml-0 max-[481px]:max-w-none">
         <div class="text-[10px] font-mono-code text-slate-400 flex items-center justify-end gap-2">
           <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
           <span>即時音訊包絡遙測</span>
@@ -311,7 +315,7 @@
 
       <!-- Bottom-Left Stereo Telegraph Parry Shields -->
       <div class="absolute bottom-3 inset-x-3 z-10 flex flex-wrap-reverse items-end justify-between gap-2 pointer-events-none max-[481px]:static max-[481px]:order-4 max-[481px]:grid max-[481px]:grid-cols-5 max-[481px]:items-stretch max-[481px]:gap-1 max-[481px]:p-1 max-[481px]:[&_button]:pointer-events-auto max-[481px]:[&_button]:min-h-11 max-[481px]:[&_button]:justify-center max-[481px]:[&_button]:px-0.5 max-[481px]:[&_button]:py-0.5 max-[481px]:[&_button]:text-[11px]">
-      <div class="flex flex-wrap items-center gap-1.5 bg-slate-950/90 backdrop-blur-xl border border-slate-700/80 rounded-xl p-1.5 z-10 shadow-xl pointer-events-auto max-[481px]:contents">
+      <div class="flex flex-wrap items-center gap-1.5 bg-slate-950/90 border border-slate-700/80 rounded-xl p-1.5 z-10 shadow-xl pointer-events-auto max-[481px]:contents">
         <span class="text-[11px] text-slate-200 font-bold px-1.5 max-[481px]:hidden">聽音調諧舉盾：</span>
         <button id="btnParryMetal" type="button" class="px-3 py-1.5 rounded-lg text-xs font-black bg-gradient-to-b from-amber-500/25 to-slate-900 hover:brightness-125 text-amber-300 border border-amber-400/60 transition flex items-center gap-1 shadow-sm">
           <span class="max-[481px]:hidden">[Q] 金屬格擋</span><span class="min-[481px]:hidden">金屬 Q</span>
@@ -1818,6 +1822,7 @@
       malletUsedThisWave: false,
       r06ReviveUsed: false,
       gameOver: false,
+      rewardPending: false,
       bulletTimeRemaining: 0,
       stunRemaining: 0,
       screenShake: 0,
@@ -2468,7 +2473,7 @@
         state.mana = Math.min(state.maxMana + 3, state.mana + 1);
         showToast('瞬光擊殺敵人！返還 +1 點聲波魔力');
       }
-      if (state.enemies.length === 0 && !state.gameOver) {
+      if (state.enemies.length === 0 && !state.gameOver && !state.rewardPending) {
         handleWaveCleared();
       }
     }
@@ -2588,6 +2593,7 @@
       state.gold = 80;
       state.r06ReviveUsed = false;
       state.gameOver = false;
+      state.rewardPending = false;
       state.totalKills = 0;
       state.totalCasts = 0;
       state.peakHits = 0;
@@ -2598,6 +2604,7 @@
     }
 
     function handleWaveCleared() {
+      state.rewardPending = true;
       if (state.act === 3 && state.wave === state.maxWaves) {
         triggerGameOver(true);
         return;
@@ -2707,6 +2714,7 @@
       if (state.hand.length < 5) {
         drawCardsFromPile(5 - state.hand.length);
       }
+      state.rewardPending = false;
       spawnWaveEnemies();
       renderHandUI();
       updateHUD();
