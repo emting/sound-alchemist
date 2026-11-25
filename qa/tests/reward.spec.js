@@ -46,6 +46,8 @@ test('wave clear awards gold once, keeps choices stable and advances or restarts
   await page.evaluate(clearWave);
   await expect(reward).toBeHidden();
   await expect(page.locator('#goWaveStat')).toHaveText(/ACT 3 CLEAR/);
+  await expect(page.locator('#gameOverModal')).toHaveCSS('backdrop-filter', 'none');
+  await expect(page.locator('#gameOverModal > .glass-panel')).toHaveCSS('backdrop-filter', 'none');
   await page.locator('#btnRestartGame').click();
   await expect(page.locator('#gameOverModal')).toBeHidden();
   expect(await page.evaluate(() => state.act === 1 && state.wave === 1 && state.enemies.length > 0)).toBe(true);

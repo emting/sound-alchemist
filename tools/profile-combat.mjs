@@ -1,4 +1,4 @@
-// From the repo root: node tools/profile-combat.mjs /path/to/output-directory [--gpu] [--headed] [--cpu=1,4] [--parry|--reward]
+// From the repo root: node tools/profile-combat.mjs /path/to/output-directory [--gpu] [--headed] [--cpu=1,4] [--parry|--reward|--modal=shop,codex]
 // --reward adds four idle reward-modal conditions after the combat reference at each CPU rate.
 // Uses Chrome (set CHROME_PATH for a nonstandard install) and Playwright from qa/.
 // Set PROFILE_ROOT to serve a separate checkout rather than this one.
@@ -17,9 +17,12 @@ fs.mkdirSync(output, { recursive: true });
 const gpu = options.includes('--gpu');
 const parry = options.includes('--parry');
 const reward = options.includes('--reward');
-if (parry && reward) throw new Error('Use --reward or --parry, not both.');
+const modalTargets = options.find(arg => arg.startsWith('--modal='))?.slice(8).split(',');
+const modalButtons = new Map([['shop', '#btnOpenShop'], ['codex', '#btnOpenCodex']]);
+if ([parry, reward, !!modalTargets].filter(Boolean).length > 1) throw new Error('Use only one of --parry, --reward and --modal.');
+if (modalTargets?.some(target => !modalButtons.has(target))) throw new Error('--modal accepts shop and codex.');
 const rates = (options.find(arg => arg.startsWith('--cpu='))?.slice(6) || '1,4').split(',').map(Number);
-const conditions = reward ? ['combat', 'baseline', 'blur-off', 'draw-paused', 'combined'] : ['combat'];
+const conditions = modalTargets || (reward ? ['combat', 'baseline', 'blur-off', 'draw-paused', 'combined'] : ['combat']);
 const args = ['--autoplay-policy=no-user-gesture-required', ...(gpu ? ['--enable-gpu'] : ['--disable-gpu'])];
 const { origin } = await serve(path.resolve(process.env.PROFILE_ROOT || path.join(path.dirname(fileURLToPath(import.meta.url)), '..')));
 const browser = await chromium.launch({
@@ -68,10 +71,12 @@ function renderingTimes(trace, frames) {
 
 try {
   for (const [rate, condition] of rates.flatMap(rate => conditions.map(condition => [rate, condition]))) {
-    const modal = condition !== 'combat';
+    const rewardModal = reward && condition !== 'combat';
+    const modalButton = modalButtons.get(condition);
+    const modalId = modalButton ? `${condition}Modal` : 'rewardModal';
     const blurOff = condition === 'blur-off' || condition === 'combined';
     const drawPaused = condition === 'draw-paused' || condition === 'combined';
-    const prefix = path.join(output, `${gpu ? 'gpu' : 'software'}-${rate}x${reward ? `-${condition}` : parry ? '-parry' : ''}`);
+    const prefix = path.join(output, `${gpu ? 'gpu' : 'software'}-${rate}x${reward || modalTargets ? `-${condition}` : parry ? '-parry' : ''}`);
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 1 });
     const page = await context.newPage();
     await page.addInitScript(() => {
@@ -89,7 +94,7 @@ try {
     const cdp = await context.newCDPSession(page);
     await cdp.send('Performance.enable');
     await cdp.send('Emulation.setCPUThrottlingRate', { rate });
-    if (modal) {
+    if (rewardModal) {
       if (blurOff) await page.addStyleTag({ content: '#rewardModal, #rewardModal .glass-panel { backdrop-filter: none !important; }' });
       await page.evaluate(drawPaused => {
         const draw = drawGame;
@@ -112,23 +117,28 @@ try {
         cleanupDeadEnemies(false);
       }, drawPaused);
       await page.locator('#rewardChoicesContainer > *').first().waitFor();
+    } else if (modalButton) {
+      await page.locator(modalButton).click();
+      await page.locator(`#${modalId}`).waitFor();
+    }
+    if (rewardModal || modalButton) {
       await page.waitForTimeout(3000);
     }
-    const setup = await page.evaluate(() => ({
+    const setup = await page.evaluate(modalId => ({
       canvas: [canvas.width, canvas.height], enemies: state.enemies.length,
       wave: state.wave, analyser: !!audio.analyser, dpr: devicePixelRatio,
       decodedAudioAssets: audioAssets.entries.size,
-      backdropFilters: ['header', 'main .glass-panel', '#btnLane0', '#rewardModal', '#rewardModal .glass-panel'].map(selector => {
+      backdropFilters: ['header', 'main .glass-panel', '#btnLane0', `#${modalId}`, `#${modalId} > .glass-panel`].map(selector => {
         const el = document.querySelector(selector);
         return getComputedStyle(selector === '#btnLane0' ? el.parentElement : el).backdropFilter;
       }),
-    }));
+    }), modalId);
     if (blurOff && setup.backdropFilters.slice(-2).some(filter => filter !== 'none')) throw new Error('Modal blur was not disabled.');
     await page.screenshot({ path: `${prefix}.png`, animations: 'disabled' });
 
     await browser.startTracing(page, { categories, path: `${prefix}.trace.json` });
     const start = await metrics(cdp);
-    const live = await page.evaluate(parry => new Promise(resolve => {
+    const live = await page.evaluate(({ parry, modalId }) => new Promise(resolve => {
       const intervals = [];
       let first, last, initialDraws;
       let parried = false, maxParticles = 0;
@@ -154,16 +164,16 @@ try {
         else {
           performance.mark('combat-profile-end');
           resolve({ intervals, wave: state.wave, enemies: state.enemies.length, gameOver: state.gameOver, maxParticles,
-            rewardOpen: !document.getElementById('rewardModal').classList.contains('hidden'),
+            modalOpen: !document.getElementById(modalId).classList.contains('hidden'),
             draws: window.profileDrawCount && window.profileDrawCount() - initialDraws });
         }
       };
       requestAnimationFrame(frame);
-    }), parry);
+    }), { parry, modalId });
     const end = await metrics(cdp);
     const trace = await browser.stopTracing();
-    if (live.gameOver || live.wave !== setup.wave || (modal ? !live.rewardOpen || live.enemies : !live.enemies || live.rewardOpen)) {
-      throw new Error(`The sample did not stay in ${modal ? 'the reward modal' : 'live combat'}.`);
+    if (live.gameOver || live.wave !== setup.wave || live.modalOpen !== !!(rewardModal || modalButton) || (rewardModal ? live.enemies : !live.enemies)) {
+      throw new Error(`The sample did not stay in ${rewardModal || modalButton ? modalId : 'live combat'}.`);
     }
     if (drawPaused && live.draws !== 0) throw new Error('Canvas drawing did not stay paused.');
     if (parry && !live.maxParticles) throw new Error('The parry sample did not exercise particle rendering.');
