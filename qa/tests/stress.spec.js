@@ -121,7 +121,7 @@ test(`3 Act Bosses under ${CPU_RATE}x CPU throttle: Peak registration within ±$
   for (const o of overflow) expect.soft(o, `no horizontal overflow at 480px: ${o.label}`).toMatchObject({ ok: true });
   expect.soft(pageErrors(page), 'no page errors, console errors or failed requests').toEqual([]);
   if (HTTP) {
-    expect.soft(result.assets, 'all MP3 assets fetched and decoded over http').toMatchObject({ status: 'ready', fetched: 40, decoded: 40 });
+    expect.soft(result.assets, 'the idle batch finishes during the campaign over http').toMatchObject({ status: 'ready', fetched: 40, decoded: 40 });
     expect.soft(result.mp3.violations, 'MP3 sources per sound: Peak release 1, off-Peak 0, overload 0, instant card 1, relic 1').toEqual({ peakReleaseNot1: 0, offPeakReleaseNot0: 0, overloadNot0: 0, instantCardNot1: 0, relicNot1: 0, unattributed: 0 });
   }
 });
@@ -141,8 +141,8 @@ test(`MP3 path over http under ${CPU_RATE}x CPU throttle: overloads, codex previ
   const freshGame = async () => { await revive(); await page.evaluate(() => restartFullGame()); await sleep(300); };
   // First cast creates the AudioContext; decoding starts there.
   steps.push(await castOnce(page, 0));
-  await page.waitForFunction(() => { const a = window.__qa.assetStatus(); return a && a.fetched > 0 && a.decoded === a.fetched; }, null, { timeout: 30000 }).catch(() => {});
   const assetsAfterFirstCast = await assetStatus(page);
+  await page.waitForFunction(() => window.__qa.assetStatus().decoded === 40, null, { timeout: 60000 });
   const previews = {};
   for (const [key, filter, sel] of [['cards', 'all', '.btn-preview-card'], ['relics', 'relics', '.btn-preview-relic']]) {
     await freshGame();

@@ -289,9 +289,8 @@ module.exports = function instrument({ toleranceMs }) {
     qa.assetStatus = () => {
       const a = assets();
       if (!a) return null;
-      let decoded = 0;
-      a.entries.forEach((e) => { if (e.buffer) decoded += 1; });
-      return { status: a.status, reason: a.reason, fetched: a.entries.size, decoded, protocol: location.protocol };
+      const { status, reason, loaded: fetched, decoded } = a.summary();
+      return { status, reason, fetched, decoded, protocol: location.protocol };
     };
     qa.hooked = true;
   });
