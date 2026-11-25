@@ -86,10 +86,10 @@ suspends the PulseAudio sink that long during cast 3 (an audio-clock stall induc
 ## MP3 path (`QA_HTTP=1`)
 
 On `file://` the game falls back to the synthesizer, so the MP3 code never runs. With `QA_HTTP=1` the
-harness serves the game over HTTP, waits for initial asset readiness, and logs every
+harness serves the game over HTTP and logs every
 `AudioBufferSourceNode.start()` whose buffer is a decoded asset against the game call that was running.
-The manifest loads first, then the current hand/deck and owned relics. Other assets load at idle
-or jump the queue when requested by a play/preview. The first audio gesture enables decoding.
+The first audio gesture starts loading the manifest, then the current hand/deck and owned relics.
+Other assets load at idle or jump the queue when requested by a play/preview.
 `audioAssets.summary()` reports available audio/envelope pairs as `loaded` (`fetched` in QA) and
 usable buffers as `decoded`; both can be below 40 at startup. A sound that hasn't decoded uses the
 procedural path for that play. By the end of the boss test all 40 assets should have decoded. For
@@ -108,6 +108,9 @@ From the repo root, run `node tools/bench-loading.mjs [site-directory]` to measu
 loads over local HTTP with the Chromium installed by QA. It reports browser requests/transferred
 bytes and local-origin requests/response-body bytes (including service worker requests). The
 accounted byte total combines origin response bodies with page-observed external transfers.
+Use `node tools/bench-loading.mjs [site-directory] --gesture` for a cold run without the service
+worker API, an audio request/byte snapshot at five seconds without input, then a real pointer gesture.
+Decode times relative to the gesture are negative if the buffer was already decoded before input.
 
 All tests now also fail on page errors, console errors and failed or 4xx/5xx requests.
 The simulator test checks 10 executions x 10 rows x 18 waves; it does not require every run to be a
