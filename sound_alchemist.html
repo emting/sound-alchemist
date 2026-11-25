@@ -2173,6 +2173,9 @@
       if (!overlay) return;
       overlay.classList.toggle('hidden', !visible);
       overlay.classList.toggle('flex', visible);
+      document.querySelector('header')?.toggleAttribute('inert', visible);
+      document.querySelector('main')?.toggleAttribute('inert', visible);
+      if (visible) document.getElementById('btnStartGame')?.focus();
     }
 
     function showTutorialCoach(title, prompt) {
@@ -5001,6 +5004,27 @@
       });
 
       window.addEventListener('keydown', (e) => {
+        if (state.awaitingStart) {
+          if (e.key === 'Tab') {
+            const overlay = document.getElementById('startOverlay');
+            const focusable = Array.from(overlay.querySelectorAll(
+              'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+            )).filter(element => element.getClientRects().length > 0);
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (!first) {
+              e.preventDefault();
+            } else if (!overlay.contains(document.activeElement)) {
+              e.preventDefault();
+              first.focus();
+            } else if ((e.shiftKey && document.activeElement === first)
+              || (!e.shiftKey && document.activeElement === last)) {
+              e.preventDefault();
+              (e.shiftKey ? last : first).focus();
+            }
+          }
+          return;
+        }
         if (e.code === 'Space') {
           if (state.activeCast) {
             e.preventDefault();
