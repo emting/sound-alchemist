@@ -16,7 +16,7 @@
       "file": "sfx/C02.mp3",
       "envelope": "envelopes/C02.json",
       "duration": 1.8358,
-      "peakTime": 0.025
+      "peakTime": 0.075
     },
     "C03": {
       "file": "sfx/C03.mp3",

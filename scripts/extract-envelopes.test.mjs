@@ -22,9 +22,9 @@ function makeTone(file, extra) {
 before(() => {
   dir = mkdtempSync(join(tmpdir(), 'sa-env-'));
   mkdirSync(join(dir, 'sfx'));
-  makeTone(join(dir, 'sfx', 'C01.mp3'), ['-c:a', 'libmp3lame', '-b:a', '320k', '-ac', '2']);
-  makeTone(join(dir, 'sfx', 'C02.mp3'), ['-c:a', 'libmp3lame', '-b:a', '128k', '-ac', '2']);
-  makeTone(join(dir, 'sfx', 'R01.mp3'), ['-c:a', 'libmp3lame', '-b:a', '320k', '-ac', '1']);
+  makeTone(join(dir, 'sfx', 'C01.mp3'), ['-c:a', 'libmp3lame', '-b:a', '128k', '-ac', '2']);
+  makeTone(join(dir, 'sfx', 'C02.mp3'), ['-c:a', 'libmp3lame', '-b:a', '320k', '-ac', '2']);
+  makeTone(join(dir, 'sfx', 'R01.mp3'), ['-c:a', 'libmp3lame', '-b:a', '128k', '-ac', '1']);
 });
 after(() => rmSync(dir, { recursive: true, force: true }));
 
@@ -45,7 +45,7 @@ test('rmsEnvelope pools channels over 50 ms windows', () => {
   assert.equal(rms[1], 0);
 });
 
-test('320 kbps stereo MP3 yields a 50 ms RMS envelope with the right peak', () => {
+test('128 kbps stereo MP3 yields a 50 ms RMS envelope with the right peak', () => {
   const { manifest, rejected } = buildAll({ audioDir: dir, htmlPath, log: () => {} });
   assert.deepEqual(Object.keys(manifest.assets), ['C01']);
   const env = JSON.parse(readFileSync(join(dir, 'envelopes', 'C01.json'), 'utf8'));
@@ -57,7 +57,7 @@ test('320 kbps stereo MP3 yields a 50 ms RMS envelope with the right peak', () =
   assert.ok(Math.abs(env.rms[4] - 0.1 / Math.SQRT2) < 0.01, `quiet rms ${env.rms[4]}`);
   assert.equal(manifest.assets.C01.peakTime, env.peakTime);
 
-  // 128 kbps and mono files are refused and stay on the synth fallback.
+  // 320 kbps and mono files are refused and stay on the synth fallback.
   assert.deepEqual(rejected.map((r) => r.id).sort(), ['C02', 'R01']);
   assert.ok(manifest.missing.includes('C02') && manifest.missing.includes('R01'));
   assert.equal(manifest.missing.length, 39);
