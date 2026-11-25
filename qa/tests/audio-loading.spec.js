@@ -65,7 +65,7 @@ test('offline reload starts an MP3 from the service worker cache', async ({ page
   await page.waitForFunction(async urls => navigator.serviceWorker.controller?.state === 'activated' &&
     (await Promise.all(urls.map(url => caches.match(url)))).every(Boolean), cached, { timeout: 60000 });
   await context.setOffline(true);
-  const response = await page.reload();
+  const response = await page.goto(page.url());
   expect(response.fromServiceWorker()).toBe(true);
   await page.waitForFunction(() => state.hand.length > 0);
   expect(await page.evaluate(() => navigator.onLine)).toBe(false);
@@ -92,14 +92,22 @@ test('offline reload starts an MP3 from the service worker cache', async ({ page
   await testInfo.attach('offline decode and playback', { body: JSON.stringify(played), contentType: 'application/json' });
 });
 
-test('an updated worker takes control without closing the game tab', async ({ page }) => {
+test('an updated worker takes control and keeps previously cached audio playable offline', async ({ page, context }) => {
   test.skip(!HTTP, 'needs QA_HTTP=1');
   await page.goto(await gameUrl());
-  await page.waitForFunction(() => navigator.serviceWorker.controller);
+  await page.waitForFunction(() => navigator.serviceWorker.controller?.state === 'activated' && audioAssets.summary().loaded === 40);
   const retiredCache = await page.evaluate(async () => {
     const scope = new URL('./', location.href).href;
-    const key = `sound-alchemist:${scope}:retired`;
-    await caches.open(key);
+    const prefix = `sound-alchemist:${scope}:`;
+    const key = prefix + 'retired';
+    const old = await caches.open(key);
+    const current = await caches.open((await caches.keys()).find(name => name.startsWith(prefix) && name !== key));
+    for (const path of ['envelopes/C01.json', 'sfx/C01.mp3']) {
+      const url = new URL('assets/audio/' + path, scope).href;
+      await old.put(url, new Response('obsolete content'));
+      await current.delete(url);
+    }
+    await old.put(new URL('assets/audio/envelopes/removed.json', scope).href, new Response('removed from manifest'));
     await navigator.serviceWorker.register('sw.js?update-test=1');
     return key;
   });
@@ -108,6 +116,10 @@ test('an updated worker takes control without closing the game tab', async ({ pa
     return worker?.state === 'activated' && worker.scriptURL.endsWith('?update-test=1');
   }, null, { timeout: 15000 });
   expect(await page.evaluate(async key => (await caches.keys()).includes(key), retiredCache)).toBe(false);
+  await context.setOffline(true);
+  expect((await page.goto(page.url())).fromServiceWorker()).toBe(true);
+  await page.evaluate(() => audio.init());
+  await page.waitForFunction(() => audioAssets.has('C01'), null, { timeout: 15000 });
 });
 
 test('file URL still initializes the hand and uses the synth fallback', async ({ page }) => {

@@ -6,18 +6,45 @@ const GAME = new URL('sound_alchemist.html', self.registration.scope).href;
 const AUDIO = new URL('assets/audio/', self.registration.scope).href;
 const TAILWIND = 'https://cdn.tailwindcss.com/3.4.17';
 
+async function priorCaches() {
+  return (await caches.keys()).filter(name => name.startsWith(PREFIX) && name !== CACHE);
+}
+
+async function refreshCachedAudio(cache) {
+  const priorAudio = new Set();
+  for (const name of await priorCaches()) {
+    const previous = await caches.open(name);
+    for (const request of await previous.keys()) {
+      if (request.url.startsWith(AUDIO)) priorAudio.add(request.url);
+    }
+    const tailwind = await previous.match(TAILWIND);
+    if (tailwind) await cache.put(TAILWIND, tailwind);
+  }
+  if (!priorAudio.size) return;
+
+  const manifestUrl = new URL('manifest.json', AUDIO).href;
+  const manifest = await fetch(manifestUrl, { cache: 'reload' });
+  if (!manifest.ok) throw new Error(`HTTP ${manifest.status} for ${manifestUrl}`);
+  const { assets } = await manifest.clone().json();
+  const currentAudio = new Set(Object.values(assets).flatMap(meta =>
+    [meta.file, meta.envelope].map(path => new URL(path, AUDIO).href)));
+  const previouslyCached = [...priorAudio].filter(url => currentAudio.has(url));
+  await cache.addAll(previouslyCached.map(url => new Request(url, { cache: 'reload', priority: 'low' })));
+  await cache.put(manifestUrl, manifest);
+}
+
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
     await cache.addAll([HOME, GAME]);
+    await refreshCachedAudio(cache);
     await self.skipWaiting();
   })());
 });
 
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
-    const names = await caches.keys();
-    await Promise.all(names.filter(name => name.startsWith(PREFIX) && name !== CACHE).map(name => caches.delete(name)));
+    await Promise.all((await priorCaches()).map(name => caches.delete(name)));
     await self.clients.claim();
   })());
 });
