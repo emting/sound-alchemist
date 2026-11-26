@@ -19,13 +19,16 @@ test('audio waits for a gesture, then prioritizes starter sounds and on-demand p
     });
     const page = await context.newPage();
     await page.goto(await gameUrl());
-    await page.locator('#btnOpenCodex').dispatchEvent('pointerdown');
+    await expect(page.locator('#startOverlay')).toBeVisible();
     await page.waitForFunction(() => performance.now() >= 3000);
     expect(audioRequests).toEqual([]);
     expect(await page.evaluate(() => audioAssets.summary())).toMatchObject({ status: 'idle', loaded: 0, decoded: 0 });
 
-    await page.locator('#btnOpenCodex').click();
+    await page.locator('#btnStartGame').click();
+    await expect.poll(() => audioRequests.length).toBeGreaterThan(0);
     await expect.poll(() => mp3Requests.length).toBe(4);
+    if (await page.evaluate(() => innerWidth <= 480)) await page.locator('#btnMobileMenu').click();
+    await page.locator('#btnOpenCodex').click();
     const priority = await page.evaluate(() => ({
       hand: state.hand.map(card => card.id),
       starters: [...state.ownedRelics, ...state.masterDeck.map(card => card.id)],
@@ -61,12 +64,15 @@ test('a touch starts loading without waiting for the tap to end', async ({ brows
   try {
     const page = await context.newPage();
     await page.goto(await gameUrl());
+    await expect(page.locator('#startOverlay')).toBeVisible();
     const client = await context.newCDPSession(page);
     const manifest = page.waitForRequest('**/assets/audio/manifest.json');
-    await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 5, y: 5 }] });
+    const startButton = await page.locator('#btnStartGame').boundingBox();
+    await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: startButton.x + startButton.width / 2, y: startButton.y + startButton.height / 2 }] });
     await manifest;
+    expect(await page.evaluate(() => state.awaitingStart)).toBe(true);
     await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-    await page.waitForFunction(() => audioAssets.summary().decoded > 0 && audio.ctx.state === 'running');
+    await page.waitForFunction(() => !state.awaitingStart && audioAssets.summary().decoded > 0 && audio.ctx.state === 'running');
   } finally {
     await context.close();
   }
@@ -75,6 +81,7 @@ test('a touch starts loading without waiting for the tap to end', async ({ brows
 test('offline reload starts an MP3 from the service worker cache', async ({ page, context }, testInfo) => {
   test.skip(!HTTP, 'needs QA_HTTP=1');
   await page.addInitScript(() => {
+    try { localStorage.setItem('soundAlchemist.tutorialDone', '1'); } catch (e) {}
     if (navigator.serviceWorker.controller) return;
     const register = navigator.serviceWorker.register.bind(navigator.serviceWorker);
     navigator.serviceWorker.register = (...args) => new Promise((resolve, reject) => {
@@ -82,7 +89,10 @@ test('offline reload starts an MP3 from the service worker cache', async ({ page
     });
   });
   await page.goto(await gameUrl());
-  await page.locator('#btnLane0').click();
+  await expect(page.locator('#startOverlay')).toBeVisible();
+  await page.waitForFunction(() => state.awaitingStart && state.hand.length === 5);
+  await page.locator('#btnStartGame').click();
+  await page.waitForFunction(() => !state.awaitingStart && state.enemies.length === 4);
   await page.waitForFunction(() => audioAssets.summary().decoded === 40, null, { timeout: 60000 });
   expect(await page.evaluate(() => navigator.serviceWorker.controller)).toBeNull();
   await page.evaluate(() => { window.allowWorkerRegistration(); });
@@ -99,14 +109,17 @@ test('offline reload starts an MP3 from the service worker cache', async ({ page
     page.reload(),
   ]);
   expect(responses.every(response => response.ok() && response.fromServiceWorker())).toBe(true);
-  await page.waitForFunction(() => state.hand.length > 0);
+  await expect(page.locator('#startOverlay')).toBeVisible();
+  await page.waitForFunction(() => state.awaitingStart && state.hand.length > 0);
+  const c01Response = page.waitForResponse(new URL('assets/audio/sfx/C01.mp3', game).href);
+  await page.locator('#btnStartGame').click();
+  await page.waitForFunction(() => !state.awaitingStart && state.enemies.length === 4);
+  const mp3 = await c01Response;
+  expect(mp3.ok() && mp3.fromServiceWorker()).toBe(true);
   expect(await page.evaluate(() => navigator.onLine)).toBe(false);
   await expect(page.locator('#codexModal')).toHaveCSS('display', 'none');
-  const [mp3] = await Promise.all([
-    page.waitForResponse(new URL('assets/audio/sfx/C01.mp3', game).href),
-    page.locator('#btnOpenCodex').click(),
-  ]);
-  expect(mp3.ok() && mp3.fromServiceWorker()).toBe(true);
+  if (await page.evaluate(() => innerWidth <= 480)) await page.locator('#btnMobileMenu').click();
+  await page.locator('#btnOpenCodex').click();
   await page.waitForFunction(() => audioAssets.has('C01'));
   await page.evaluate(() => {
     const create = audio.ctx.createBufferSource.bind(audio.ctx);
@@ -131,7 +144,8 @@ test('offline reload starts an MP3 from the service worker cache', async ({ page
 test('an updated worker takes control and keeps previously cached audio playable offline', async ({ page, context }) => {
   test.skip(!HTTP, 'needs QA_HTTP=1');
   await page.goto(await gameUrl());
-  await page.keyboard.press('1');
+  await expect(page.locator('#startOverlay')).toBeVisible();
+  await page.locator('#btnStartGame').click();
   await page.waitForFunction(() => navigator.serviceWorker.controller?.state === 'activated' && audioAssets.summary().loaded === 40);
   const retiredCache = await page.evaluate(async () => {
     const scope = new URL('./', location.href).href;
@@ -155,7 +169,8 @@ test('an updated worker takes control and keeps previously cached audio playable
   expect(await page.evaluate(async key => (await caches.keys()).includes(key), retiredCache)).toBe(false);
   await context.setOffline(true);
   expect((await page.goto(page.url())).fromServiceWorker()).toBe(true);
-  await page.keyboard.press('1');
+  await expect(page.locator('#startOverlay')).toBeVisible();
+  await page.locator('#btnStartGame').click();
   await page.waitForFunction(() => audioAssets.has('C01'), null, { timeout: 15000 });
 });
 
@@ -168,8 +183,11 @@ test('file URL still initializes the hand and uses the synth fallback', async ({
     if (/\/sw\.js|\/assets\/audio\//.test(request.url())) audioRequests.push(request.url());
   });
   await page.goto(await gameUrl());
+  await page.waitForFunction(() => state.awaitingStart && state.hand.length > 0);
   const stateAndAssets = await page.evaluate(() => ({ hand: state.hand.length, ...audioAssets.summary() }));
   expect(stateAndAssets).toMatchObject({ hand: 5, status: 'fallback', loaded: 0, decoded: 0 });
+  await page.locator('#btnStartGame').click();
+  if (await page.evaluate(() => innerWidth <= 480)) await page.locator('#btnMobileMenu').click();
   await page.locator('#btnOpenCodex').click();
   await page.locator('.btn-preview-card').first().click();
   expect(await page.evaluate(() => audioAssets.summary())).toMatchObject({ status: 'fallback', loaded: 0, decoded: 0 });

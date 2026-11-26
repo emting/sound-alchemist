@@ -157,6 +157,157 @@
       background: rgba(148, 163, 184, 0.4);
       border-radius: 9999px;
     }
+    #startOverlay > .glass-panel {
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+    #btnMobileMenu {
+      display: none;
+    }
+    @media (max-width: 480px) {
+      #brandBlock {
+        gap: 0.375rem;
+      }
+      #brandBlock > div:nth-child(2) > div:first-child {
+        flex-wrap: nowrap;
+        gap: 0.25rem;
+      }
+      #brandBlock h1 {
+        font-size: 11px;
+        letter-spacing: 0;
+        white-space: nowrap;
+      }
+      #actBadge {
+        padding: 0.125rem 0.35rem;
+        font-size: 8px;
+        white-space: nowrap;
+      }
+      #btnMobileMenu {
+        display: inline-flex;
+        padding: 0.25rem 0.5rem;
+        font-size: 10px;
+      }
+      #headerActions:not([data-open="true"]) {
+        display: none;
+      }
+      #headerActions[data-open="true"] {
+        display: flex;
+        flex-basis: 100%;
+        justify-content: flex-start;
+      }
+      #topHud {
+        gap: 0.25rem;
+        padding: 0.375rem;
+      }
+      #topHud > div:first-child,
+      #topHud > div:nth-child(2),
+      #topHud > div:last-child {
+        grid-column: 1 / -1;
+      }
+      #topHud > div:first-child {
+        gap: 0.375rem;
+        padding: 0;
+      }
+      #topHud > div:first-child > div:first-child > div:first-child {
+        margin-bottom: 0.125rem;
+        font-size: 9px;
+      }
+      #topHud > div:first-child > div:first-child > div:last-child {
+        height: 0.45rem;
+      }
+      #topHud > div:first-child > div:last-child {
+        min-width: 52px;
+        padding: 0.125rem 0.35rem;
+      }
+      #topHud > div:first-child > div:last-child > div:first-child {
+        font-size: 8px;
+      }
+      #topHud > div:nth-child(2) {
+        gap: 0.2rem;
+        border-top: 0;
+        padding: 0;
+      }
+      #topHud > div:nth-child(2) > div {
+        min-width: 0;
+        padding: 0.125rem 0.0625rem;
+        border-radius: 0.5rem;
+      }
+      #topHud > div:nth-child(2) > div > div:first-child {
+        font-size: 8px;
+        line-height: 1.05;
+        white-space: nowrap;
+      }
+      #topHud > div:nth-child(2) > div > div:nth-child(2) {
+        font-size: 11px;
+        line-height: 1.05;
+      }
+      #topHud > div:nth-child(2) #hudChargeCells {
+        font-size: 9px;
+      }
+      #topHud > div:nth-child(2) #hudManaDots {
+        gap: 1px;
+        margin-top: 0;
+      }
+      #hudManaDots > span {
+        width: 5px;
+        height: 5px;
+      }
+      #topHud > div:last-child {
+        gap: 0.2rem;
+        padding-left: 0;
+      }
+      #topHud > div:last-child > div:first-child {
+        min-width: 0;
+      }
+      #topHud > div:last-child > div:first-child > div:first-child {
+        margin-bottom: 0;
+      }
+      #relicBar {
+        min-height: 24px;
+        gap: 0.15rem;
+      }
+      #relicBar button {
+        padding-left: 0.2rem;
+        padding-right: 0.2rem;
+        font-size: 8px;
+      }
+      #btnCampfireRest {
+        padding: 0.25rem 0.35rem;
+        font-size: 9px;
+      }
+      #handContainer[data-compact] {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 0.25rem;
+      }
+      #handContainer[data-compact] > .tcg-card {
+        min-width: 0;
+        padding: 0.25rem;
+        border-radius: 0.5rem;
+        justify-content: flex-start;
+      }
+      #handContainer[data-compact] > .tcg-card svg {
+        width: 100%;
+        height: 30px;
+      }
+      #handContainer[data-compact] > .tcg-card > div:first-child > div:first-child {
+        justify-content: center;
+      }
+      #handContainer[data-compact] > .tcg-card > div:first-child > div:first-child > span:last-child {
+        padding-left: 0.125rem;
+        padding-right: 0.125rem;
+        font-size: 8px;
+      }
+      #handContainer[data-compact] > .tcg-card > div:first-child > div:nth-child(3) {
+        justify-content: center;
+        margin-top: 0.2rem;
+      }
+      #handContainer[data-compact] > .tcg-card h3 {
+        overflow-wrap: anywhere;
+        font-size: 9px;
+        line-height: 1.1;
+        text-align: center;
+      }
+    }
   </style>
   <link rel="stylesheet" href="assets/css/tailwind.css">
 </head>
@@ -168,7 +319,7 @@
   <header class="w-full border-b border-slate-800/90 bg-slate-950/90 z-30 px-3 py-2.5 max-[481px]:py-1.5 max-[481px]:[&_.font-mono-code]:[font-family:inherit] shadow-xl">
     <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2 max-[481px]:gap-1">
       <!-- Brand Crest & Act Status -->
-      <div class="flex items-center gap-3">
+      <div id="brandBlock" class="flex items-center gap-3">
         <div id="brandBadge" class="w-10 h-10 max-[481px]:size-8 rounded-xl bg-gradient-to-br from-amber-400/30 via-amber-500/15 to-sky-500/20 border border-amber-400/60 flex items-center justify-center text-amber-300 font-black text-xl shadow-[0_0_18px_rgba(245,158,11,0.3)]">
           ∿
         </div>
@@ -191,7 +342,10 @@
       </div>
 
       <!-- Dual-Timbre Switch & Master Console Buttons -->
-      <div class="flex flex-wrap items-center gap-1.5 sm:gap-2 max-[481px]:gap-1 max-[481px]:[&>button]:px-1.5 max-[481px]:[&>button]:py-1 max-[481px]:[&>button]:text-[10px]">
+      <button id="btnMobileMenu" type="button" aria-controls="headerActions" aria-expanded="false" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700">
+        選單
+      </button>
+      <div id="headerActions" class="flex flex-wrap items-center gap-1.5 sm:gap-2 max-[481px]:gap-1 max-[481px]:[&>button]:px-1.5 max-[481px]:[&>button]:py-1 max-[481px]:[&>button]:text-[10px]">
         <button id="btnTimbreSwitch" type="button" class="px-3 py-1.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 bg-gradient-to-r from-amber-500/20 to-orange-500/15 border-amber-400/60 text-amber-200 hover:brightness-125 shadow-[0_0_14px_rgba(245,158,11,0.2)]" title="切換寫實共鳴 (Natural) 與風格化共鳴 (Stylized)">
           <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse shadow-[0_0_8px_#fbbf24]" id="timbreDot"></span>
           <span id="timbreLabel">調音台：寫實共鳴 (Natural ±65ms)</span>
@@ -231,7 +385,7 @@
   <!-- Main Workspace Container -->
   <main class="flex-1 max-w-7xl w-full mx-auto px-2 sm:px-4 py-2 flex flex-col gap-2.5 max-[481px]:gap-1.5 max-[481px]:[&_.font-mono-code]:[font-family:inherit]">
     <!-- Top HUD Strip: Ornate Instrument Cluster -->
-    <section class="grid grid-cols-2 sm:grid-cols-12 gap-2.5 items-center glass-panel border border-slate-800/90 rounded-2xl p-3 max-[481px]:gap-1 max-[481px]:p-1.5">
+    <section id="topHud" class="grid grid-cols-2 sm:grid-cols-12 gap-2.5 items-center glass-panel border border-slate-800/90 rounded-2xl p-3 max-[481px]:gap-1 max-[481px]:p-1.5">
       <!-- Tower Durability & Hex Shield Readout -->
       <div class="col-span-2 sm:col-span-3 flex items-center gap-3 pr-1">
         <div class="flex-1">
@@ -304,6 +458,14 @@
         </button>
       </div>
     </section>
+
+    <div id="tutorialCoach" class="hidden glass-panel border border-sky-400/50 rounded-xl px-3 py-2 flex flex-wrap items-center gap-2" role="status" aria-live="polite">
+      <strong id="tutorialTitle" class="text-xs font-black text-sky-300"></strong>
+      <p id="tutorialPrompt" class="flex-1 text-xs text-slate-200"></p>
+      <button id="btnSkipTutorial" type="button" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600">
+        略過教學
+      </button>
+    </div>
 
     <!-- Center Stage: Studio-Grade Parallax Battlefield Canvas + Oscilloscope -->
     <section class="relative w-full bg-slate-950 border-2 border-slate-800/90 rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.85)] min-[481px]:h-[380px] max-[481px]:flex max-[481px]:flex-col">
@@ -415,6 +577,22 @@
 
   <!-- Toast Notification Banner -->
   <div id="toastBanner" class="fixed bottom-5 right-5 z-50 pointer-events-none opacity-0 translate-y-2 transition-all duration-200 bg-slate-950/95 border border-amber-400/70 text-amber-200 px-4 py-3 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.85)] text-xs font-bold max-w-sm"></div>
+
+  <div id="startOverlay" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/95 p-4" role="dialog" aria-modal="true" aria-labelledby="startOverlayTitle">
+    <div class="glass-panel border border-amber-500/60 rounded-2xl max-w-lg w-full p-5 shadow-2xl">
+      <span class="text-xs font-mono-code uppercase tracking-wider text-amber-400">FIRST WAVE · 新手開局</span>
+      <h2 id="startOverlayTitle" class="text-xl font-black text-white mt-1">準備好再開始第一波</h2>
+      <p id="startOverlayCopy" class="text-sm text-slate-300 mt-2">第一波會等你按下開始。第一次先換到右聲道，再按住卡牌蓄力，試著在 82% Peak 釋放；練習期間不會有敵人攻擊。</p>
+      <div class="flex items-center gap-3 mt-5">
+        <button id="btnStartGame" type="button" class="px-5 py-2 rounded-xl text-sm font-black bg-gradient-to-r from-amber-500 to-orange-500 hover:brightness-110 text-slate-950 border border-amber-300 shadow-lg">
+          開始
+        </button>
+        <button id="btnReplayTutorial" type="button" class="hidden px-2 py-1 text-xs font-semibold text-sky-300 hover:text-sky-200 underline underline-offset-2">
+          重看教學
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- Wave Clear / Reward 3-Choice Modal -->
   <div id="rewardModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/95 p-4">
@@ -1948,6 +2126,9 @@
       malletUsedThisWave: false,
       r06ReviveUsed: false,
       gameOver: false,
+      awaitingStart: true,
+      tutorialStep: 0,
+      tutorialSnapshot: null,
       rewardPending: false,
       bulletTimeRemaining: 0,
       stunRemaining: 0,
@@ -1971,6 +2152,161 @@
       peakHits: 0,
       bestWavesCleared: 1
     };
+
+    const TUTORIAL_STORAGE_KEY = 'soundAlchemist.tutorialDone';
+
+    function hasCompletedTutorial() {
+      try {
+        return localStorage.getItem(TUTORIAL_STORAGE_KEY) === '1';
+      } catch (e) {
+        return false;
+      }
+    }
+
+    function markTutorialCompleted() {
+      try {
+        localStorage.setItem(TUTORIAL_STORAGE_KEY, '1');
+      } catch (e) {}
+    }
+
+    function setStartOverlay(visible) {
+      const overlay = document.getElementById('startOverlay');
+      if (!overlay) return;
+      overlay.classList.toggle('hidden', !visible);
+      overlay.classList.toggle('flex', visible);
+      document.querySelector('header')?.toggleAttribute('inert', visible);
+      document.querySelector('main')?.toggleAttribute('inert', visible);
+      if (visible) document.getElementById('btnStartGame')?.focus();
+    }
+
+    function showTutorialCoach(title, prompt) {
+      document.getElementById('tutorialTitle').textContent = title;
+      document.getElementById('tutorialPrompt').textContent = prompt;
+      document.getElementById('tutorialCoach').classList.remove('hidden');
+    }
+
+    function hideTutorialCoach() {
+      document.getElementById('tutorialCoach').classList.add('hidden');
+    }
+
+    function saveTutorialSnapshot() {
+      return {
+        hand: state.hand.slice(),
+        drawPile: state.drawPile.slice(),
+        discardPile: state.discardPile.slice(),
+        hp: state.hp,
+        armor: state.armor,
+        mana: state.mana,
+        resonanceCharge: state.resonanceCharge,
+        combo: state.combo,
+        maxCombo: state.maxCombo,
+        gold: state.gold,
+        nextCardBuff: state.nextCardBuff,
+        nextCardDiscount: state.nextCardDiscount,
+        totalKills: state.totalKills,
+        totalCasts: state.totalCasts,
+        peakHits: state.peakHits
+      };
+    }
+
+    function restoreTutorialSnapshot() {
+      const saved = state.tutorialSnapshot;
+      if (!saved) return;
+      state.hand = saved.hand.slice();
+      state.drawPile = saved.drawPile.slice();
+      state.discardPile = saved.discardPile.slice();
+      state.hp = saved.hp;
+      state.armor = saved.armor;
+      state.mana = saved.mana;
+      state.resonanceCharge = saved.resonanceCharge;
+      state.combo = saved.combo;
+      state.maxCombo = saved.maxCombo;
+      state.gold = saved.gold;
+      state.nextCardBuff = saved.nextCardBuff;
+      state.nextCardDiscount = saved.nextCardDiscount;
+      state.totalKills = saved.totalKills;
+      state.totalCasts = saved.totalCasts;
+      state.peakHits = saved.peakHits;
+      state.stunRemaining = 0;
+      state.activeCast = null;
+      state.tutorialSnapshot = null;
+    }
+
+    function spawnInitialWave() {
+      state.awaitingStart = false;
+      state.tutorialStep = 0;
+      hideTutorialCoach();
+      spawnWaveEnemies();
+      state.enemies.forEach(enemy => {
+        enemy.attackTimer = Math.max(enemy.attackTimer, enemy.attackMax);
+      });
+    }
+
+    function finishTutorial(isPeak) {
+      restoreTutorialSnapshot();
+      state.awaitingStart = false;
+      state.tutorialStep = 0;
+      markTutorialCompleted();
+      hideTutorialCoach();
+      updateHUD();
+      renderHandUI();
+      if (isPeak === true) {
+        showToast('Peak 命中！第一波即將開始；之後記得抓住 82% 充能峰值。');
+      } else if (isPeak === false) {
+        showToast('這次沒有命中 Peak；下次試著在 82% 充能峰值釋放。第一波開始！');
+      } else {
+        showToast('教學已略過，第一波開始！');
+      }
+      spawnInitialWave();
+    }
+
+    function beginTutorialCastStep() {
+      if (state.tutorialStep !== 1 && state.tutorialStep !== 2) return;
+      state.tutorialStep = 2;
+      const chargedCard = state.hand.find(card => getEffectiveCardCharge(card) > 0.01)
+        || state.masterDeck.find(card => getEffectiveCardCharge(card) > 0.01);
+      if (!chargedCard) {
+        finishTutorial(null);
+        return;
+      }
+      if (!state.hand.includes(chargedCard)) {
+        state.hand = [chargedCard, ...state.hand.slice(0, 4)];
+      }
+      state.mana = Math.max(state.mana, getEffectiveCardCost(chargedCard));
+      showTutorialCoach(
+        'Step 2 · 出牌',
+        '按住一張有蓄力時間的卡牌，沿著 Peak 提示在 82% 峰值放開。命中與否都會完成練習。'
+      );
+      updateHUD();
+      renderHandUI();
+    }
+
+    function beginTutorial() {
+      state.awaitingStart = false;
+      state.selectedLane = 1;
+      state.tutorialSnapshot = saveTutorialSnapshot();
+      state.tutorialStep = 1;
+      showTutorialCoach('Step 1 · 換聲道', '切換到右聲道：點擊「右聲道」按鈕，或按鍵盤 3。');
+      updateHUD();
+      renderHandUI();
+    }
+
+    function chooseSelectedLane(lane) {
+      state.selectedLane = lane;
+      updateHUD();
+      if (state.tutorialStep === 1 && lane === 2) beginTutorialCastStep();
+    }
+
+    function beginFromStartOverlay(replayTutorial = false) {
+      if (!state.awaitingStart) return;
+      audio.init();
+      setStartOverlay(false);
+      if (replayTutorial || !hasCompletedTutorial()) {
+        beginTutorial();
+      } else {
+        spawnInitialWave();
+      }
+    }
 
     const ACT_INFO = {
       1: {
@@ -2262,6 +2598,10 @@
 
     function initiateCardCast(handIndex) {
       if (state.gameOver) return;
+      if (state.tutorialStep === 1) {
+        showToast('先切換到右聲道，再開始練習出牌。');
+        return;
+      }
       if (state.stunRemaining > 0) {
         showToast('處於過載耳鳴僵直中，請稍候！');
         return;
@@ -2272,6 +2612,10 @@
       }
       const card = state.hand[handIndex];
       if (!card) return;
+      if (state.tutorialStep === 2 && getEffectiveCardCharge(card) <= 0.01) {
+        showToast('教學練習請選擇有蓄力時間的卡牌。');
+        return;
+      }
       const effCost = getEffectiveCardCost(card);
       if (state.mana < effCost) {
         showToast('聲波魔力不足！請點擊「重抽換牌 / 下一波 [R]」或打出回魔卡。');
@@ -2334,6 +2678,7 @@
 
     function releaseActiveCast() {
       if (!state.activeCast) return;
+      const tutorialCast = state.tutorialStep === 2;
       const { card, handIndex, startAt, peakTime, windowSec, overloadAt } = state.activeCast;
       // The release is timed twice: between the press and release inputs, and on the audio
       // clock. They differ only when the audio clock stalled; either one on the peak counts.
@@ -2364,12 +2709,14 @@
       if (state.hand.length === 0) drawCardsFromPile(5);
       updateHUD();
       renderHandUI();
+      if (tutorialCast) finishTutorial(isPeak);
     }
 
     // Overload misfire: fired by the audio clock once `overloadAt` has passed.
     function commitOverloadMisfire() {
       const cast = state.activeCast;
       if (!cast) return;
+      const tutorialCast = state.tutorialStep === 2;
       const cue = audioClock.overloadCue;
       audioClock.overloadCue = null;
       state.activeCast = null;
@@ -2389,6 +2736,7 @@
       if (state.hand.length === 0) drawCardsFromPile(5);
       updateHUD();
       renderHandUI();
+      if (tutorialCast) finishTutorial(false);
     }
 
     function resolveEnemyStrike(e) {
@@ -2599,7 +2947,7 @@
         state.mana = Math.min(state.maxMana + 3, state.mana + 1);
         showToast('瞬光擊殺敵人！返還 +1 點聲波魔力');
       }
-      if (state.enemies.length === 0 && !state.gameOver && !state.rewardPending) {
+      if (state.enemies.length === 0 && !state.gameOver && !state.awaitingStart && state.tutorialStep === 0 && !state.rewardPending) {
         handleWaveCleared();
       }
     }
@@ -2720,9 +3068,14 @@
       state.r06ReviveUsed = false;
       state.gameOver = false;
       state.rewardPending = false;
+      state.awaitingStart = false;
+      state.tutorialStep = 0;
+      state.tutorialSnapshot = null;
       state.totalKills = 0;
       state.totalCasts = 0;
       state.peakHits = 0;
+      setStartOverlay(false);
+      hideTutorialCoach();
       buildMasterDeckFromPreset();
       spawnWaveEnemies();
       audio.updateAmbientDrone(1);
@@ -3331,7 +3684,7 @@
                 ${effCost} 費 · ${effCharge === 0 ? '瞬發' : effCharge.toFixed(2) + 's'}
               </span>
             </div>
-            <div class="hand-card-details contents">${getCardArtworkSVG(card)}</div>
+            <div class="contents">${getCardArtworkSVG(card)}</div>
             <div class="flex items-center justify-between mt-1.5 max-[481px]:mt-1 max-[481px]:flex-wrap">
               <h3 class="text-sm max-[481px]:text-xs font-black ${card.upgraded ? 'text-yellow-300' : 'text-white'}">${card.name}${card.upgraded ? ' ★+' : ''}</h3>
               <span class="hand-card-details text-[10px] font-mono-code px-1.5 py-0.2 rounded bg-slate-900 ${card.styleTag === '風格化' ? 'text-pink-400' : 'text-emerald-400'}">${card.styleTag}</span>
@@ -4349,8 +4702,26 @@
       window.addEventListener('resize', resizeCanvas);
 
       buildMasterDeckFromPreset();
-      spawnWaveEnemies();
       updateHUD();
+
+      const replayTutorial = document.getElementById('btnReplayTutorial');
+      const tutorialDone = hasCompletedTutorial();
+      replayTutorial.classList.toggle('hidden', !tutorialDone);
+      if (tutorialDone) {
+        document.getElementById('startOverlayCopy').textContent = '準備好就按「開始」進入第一波；也可以點「重看教學」複習換聲道與 Peak 出牌。';
+      }
+      document.getElementById('btnStartGame').addEventListener('click', () => beginFromStartOverlay());
+      replayTutorial.addEventListener('click', () => beginFromStartOverlay(true));
+      document.getElementById('btnSkipTutorial').addEventListener('click', () => finishTutorial(null));
+      setStartOverlay(true);
+
+      const mobileMenuButton = document.getElementById('btnMobileMenu');
+      const headerActions = document.getElementById('headerActions');
+      mobileMenuButton.addEventListener('click', () => {
+        const open = headerActions.getAttribute('data-open') !== 'true';
+        headerActions.setAttribute('data-open', String(open));
+        mobileMenuButton.setAttribute('aria-expanded', String(open));
+      });
 
       window.addEventListener('pointerup', () => {
         if (state.activeCast && state.activeCast.held >= 0.14) {
@@ -4376,17 +4747,15 @@
         }
         const rect = canvas.getBoundingClientRect();
         const clickY = (e.clientY - rect.top) / rect.height;
-        if (clickY < 0.39) state.selectedLane = 0;
-        else if (clickY < 0.65) state.selectedLane = 1;
-        else state.selectedLane = 2;
-        updateHUD();
+        if (clickY < 0.39) chooseSelectedLane(0);
+        else if (clickY < 0.65) chooseSelectedLane(1);
+        else chooseSelectedLane(2);
       });
 
       [0, 1, 2].forEach(idx => {
         document.getElementById(`btnLane${idx}`).addEventListener('click', () => {
           audio.init();
-          state.selectedLane = idx;
-          updateHUD();
+          chooseSelectedLane(idx);
         });
       });
 
@@ -4584,6 +4953,10 @@
         state.deckPreset = e.target.value;
         state.mana = state.maxMana;
         buildMasterDeckFromPreset();
+        if (state.tutorialStep > 0) {
+          state.tutorialSnapshot = saveTutorialSnapshot();
+          if (state.tutorialStep === 2) beginTutorialCastStep();
+        }
         updateHUD();
         showToast('已重建流派牌庫並洗牌抽取 5 張手牌！');
       });
@@ -4633,17 +5006,38 @@
       });
 
       window.addEventListener('keydown', (e) => {
+        if (state.awaitingStart) {
+          if (e.key === 'Tab') {
+            const overlay = document.getElementById('startOverlay');
+            const focusable = Array.from(overlay.querySelectorAll(
+              'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+            )).filter(element => element.getClientRects().length > 0);
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (!first) {
+              e.preventDefault();
+            } else if (!overlay.contains(document.activeElement)) {
+              e.preventDefault();
+              first.focus();
+            } else if ((e.shiftKey && document.activeElement === first)
+              || (!e.shiftKey && document.activeElement === last)) {
+              e.preventDefault();
+              (e.shiftKey ? last : first).focus();
+            }
+          }
+          return;
+        }
         if (e.code === 'Space') {
           if (state.activeCast) {
             e.preventDefault();
             releaseActiveCast();
           }
         } else if (e.key === '1') {
-          state.selectedLane = 0; updateHUD();
+          chooseSelectedLane(0);
         } else if (e.key === '2') {
-          state.selectedLane = 1; updateHUD();
+          chooseSelectedLane(1);
         } else if (e.key === '3') {
-          state.selectedLane = 2; updateHUD();
+          chooseSelectedLane(2);
         } else if (e.key === 'q' || e.key === 'Q') {
           handleParryInput('metal');
         } else if (e.key === 'w' || e.key === 'W') {

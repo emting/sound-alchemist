@@ -20,6 +20,11 @@ const CPU_RATE = Number(process.env.QA_CPU_RATE || 4);
 const sleep = (ms) => new Promise((r) => setTimeout(r, Math.max(0, ms)));
 
 async function openGame(page) {
+  await page.addInitScript(() => {
+    try {
+      localStorage.setItem('soundAlchemist.tutorialDone', '1');
+    } catch (e) {}
+  });
   await page.addInitScript(instrument, { toleranceMs: TOLERANCE_MS });
   const errors = (page.__qaErrors = []);
   page.on('pageerror', (e) => errors.push({ kind: 'pageerror', text: String(e && e.stack ? e.stack : e).slice(0, 600) }));
@@ -27,10 +32,19 @@ async function openGame(page) {
   page.on('requestfailed', (r) => errors.push({ kind: 'requestfailed', text: `${r.url()} ${r.failure() ? r.failure().errorText : ''}` }));
   page.on('response', (r) => { if (r.status() >= 400) errors.push({ kind: 'http', text: `${r.status()} ${r.url()}` }); });
   await page.goto(await gameUrl());
-  await page.waitForFunction(() => window.__qa && window.__qa.hooked && typeof state === 'object' && state.hand.length > 0);
+  await page.waitForFunction(() => window.__qa && window.__qa.hooked && typeof state === 'object' && state.hand.length > 0 && state.awaitingStart);
   await page.evaluate(() => document.fonts.ready);
   const hookError = await page.evaluate(() => window.__qa.hookError || null);
   if (hookError) throw new Error(hookError);
+  await page.waitForFunction(() => state.awaitingStart &&
+    !document.getElementById('startOverlay').classList.contains('hidden'));
+  await page.locator('#btnStartGame').click();
+  await page.waitForFunction(() => !state.awaitingStart && state.enemies.length > 0);
+  if (await page.evaluate(() => innerWidth <= 480)) {
+    await page.locator('#btnMobileMenu').click();
+  }
+  // Over HTTP, wait for initial audio readiness, not the full idle batch.
+  if (HTTP) await page.waitForFunction(() => { const a = window.__qa.assetStatus && window.__qa.assetStatus(); return !a || (a.status !== 'idle' && a.status !== 'loading'); }, null, { timeout: 30000 }).catch(() => {});
 }
 
 const pageErrors = (page) => page.__qaErrors || [];
