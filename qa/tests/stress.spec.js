@@ -32,6 +32,12 @@ test(`10-run / 18-wave simulator under ${CPU_RATE}x CPU throttle at 480px`, asyn
     const m = cells[1].match(/(\d+)\s*\/\s*(\d+)/);
     return { label: cells[0], waves: m ? Number(m[1]) : null, of: m ? Number(m[2]) : null, cleared: cells[1].includes('三幕全破') };
   }));
+  const expectUnblurred = async selector => {
+    const modal = page.locator(selector);
+    await expect(modal).toBeVisible();
+    await expect(modal).toHaveCSS('backdrop-filter', 'none');
+    await expect(page.locator(`${selector} > .glass-panel`)).toHaveCSS('backdrop-filter', 'none');
+  };
 
   const iterations = [];
   for (let i = 0; i < SIM_ITERATIONS; i++) {
@@ -40,14 +46,22 @@ test(`10-run / 18-wave simulator under ${CPU_RATE}x CPU throttle at 480px`, asyn
     await expect(page.locator('#simTableBody tr')).toHaveCount(10);
     const runs = await readSim();
     iterations.push({ iteration: i + 1, clickToResultMs: Date.now() - t, fullClears: runs.filter((r) => r.cleared).length, runs });
-    if (i === 0) overflow.push(await checkOverflow(page, 'simulator modal'));
+    if (i === 0) {
+      await expectUnblurred('#simModal');
+      overflow.push(await checkOverflow(page, 'simulator modal'));
+    }
     await sleep(400);
   }
   overflow.push(await checkOverflow(page, 'simulator modal (after reruns)'));
   await page.locator('#btnCloseSim').click();
 
-  for (const [open, close, label] of [['#btnOpenShop', '#btnCloseShop', 'shop modal'], ['#btnOpenCodex', '#btnCloseCodex', 'codex modal'], ['#btnOpenGuide', '#btnCloseGuide', 'guide modal']]) {
+  for (const [modal, open, close, label] of [
+    ['#shopModal', '#btnOpenShop', '#btnCloseShop', 'shop modal'],
+    ['#codexModal', '#btnOpenCodex', '#btnCloseCodex', 'codex modal'],
+    ['#guideModal', '#btnOpenGuide', '#btnCloseGuide', 'guide modal'],
+  ]) {
     await page.locator(open).click();
+    await expectUnblurred(modal);
     await sleep(300);
     overflow.push(await checkOverflow(page, label));
     await page.locator(close).click();

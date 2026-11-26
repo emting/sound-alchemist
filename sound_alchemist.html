@@ -105,7 +105,13 @@
       background: linear-gradient(145deg, rgba(28, 12, 54, 0.92) 0%, rgba(13, 5, 28, 0.96) 100%);
       box-shadow: 0 12px 36px -8px rgba(236, 72, 153, 0.22), inset 0 1px 0 0 rgba(0, 245, 212, 0.18);
     }
-    main .glass-panel {
+    main .glass-panel,
+    #rewardModal > .glass-panel,
+    #shopModal > .glass-panel,
+    #simModal > .glass-panel,
+    #gameOverModal > .glass-panel,
+    #codexModal > .glass-panel,
+    #guideModal > .glass-panel {
       backdrop-filter: none;
       -webkit-backdrop-filter: none;
     }
@@ -411,7 +417,7 @@
   <div id="toastBanner" class="fixed bottom-5 right-5 z-50 pointer-events-none opacity-0 translate-y-2 transition-all duration-200 bg-slate-950/95 border border-amber-400/70 text-amber-200 px-4 py-3 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.85)] text-xs font-bold max-w-sm"></div>
 
   <!-- Wave Clear / Reward 3-Choice Modal -->
-  <div id="rewardModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/85 backdrop-blur-md p-4">
+  <div id="rewardModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/95 p-4">
     <div class="glass-panel border border-amber-500/60 rounded-2xl max-w-3xl w-full p-5 shadow-2xl">
       <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3 mb-4">
         <div>
@@ -435,7 +441,7 @@
   </div>
 
   <!-- Acoustic Black Market Shop Modal -->
-  <div id="shopModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/85 backdrop-blur-md p-3 sm:p-6">
+  <div id="shopModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/95 p-3 sm:p-6">
     <div class="glass-panel border border-yellow-500/50 rounded-2xl max-w-5xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-5 py-3.5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 bg-slate-950/60">
         <div>
@@ -494,7 +500,7 @@
   </div>
 
   <!-- 10-Run AI Balance Simulator Modal -->
-  <div id="simModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/85 backdrop-blur-md p-3 sm:p-6">
+  <div id="simModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/95 p-3 sm:p-6">
     <div class="glass-panel border border-fuchsia-500/50 rounded-2xl max-w-5xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-5 py-3.5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 bg-slate-950/60">
         <div>
@@ -533,7 +539,7 @@
   </div>
 
   <!-- Game Over / Victory Settlement Modal -->
-  <div id="gameOverModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/90 backdrop-blur-md p-4">
+  <div id="gameOverModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/95 p-4">
     <div class="glass-panel border border-rose-500/60 rounded-2xl max-w-lg w-full p-6 shadow-2xl text-center">
       <div id="goIconBadge" class="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-400 flex items-center justify-center mx-auto font-black text-xl mb-3">
         ✕
@@ -570,7 +576,7 @@
   </div>
 
   <!-- Full 30 Cards & 10 Relics Codex & Soundboard Modal -->
-  <div id="codexModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/85 backdrop-blur-md p-3 sm:p-6">
+  <div id="codexModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/95 p-3 sm:p-6">
     <div class="glass-panel border border-slate-700 rounded-2xl max-w-6xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-5 py-3.5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 bg-slate-950/60">
         <div>
@@ -606,7 +612,7 @@
   </div>
 
   <!-- Casper Sound Library Stats & Architecture Guide Modal -->
-  <div id="guideModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/85 backdrop-blur-md p-3 sm:p-6">
+  <div id="guideModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/95 p-3 sm:p-6">
     <div class="glass-panel border border-slate-700 rounded-2xl max-w-4xl w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-5 py-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
         <div>
