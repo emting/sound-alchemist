@@ -4160,7 +4160,7 @@
     }
 
     function drawTelegraphWarning(e, ex, ey, w, h) {
-      if (!e.telegraphing && !e.cuePending) return;
+      if (!e.telegraphing) return;
       const wkColor = state.blindMode ? '#f43f5e' : (SHIELD_COLORS[e.weakness] || '#fbbf24');
       const leadMax = audioClock.TELEGRAPH_LEAD || 1.35;
       const progress = Math.max(0, Math.min(1, 1 - (e.attackTimer / leadMax)));
