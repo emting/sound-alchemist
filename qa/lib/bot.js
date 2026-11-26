@@ -42,6 +42,9 @@ async function pickReward(page, log) {
   for (let attempt = 0; attempt < 4; attempt++) {
     const box = await page.locator('#rewardChoicesContainer').boundingBox();
     if (box) await page.mouse.click(box.x + box.width / 2, box.y + box.height - 40);
+    await sleep(120);
+    const confirm = page.locator('#btnConfirmReward');
+    if (await confirm.isEnabled().catch(() => false)) await confirm.click();
     await sleep(150);
     if (!(await open())) { log.rewardsTaken += 1; return; }
     log.rewardClickRetries += 1;
