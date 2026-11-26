@@ -5018,22 +5018,33 @@
       });
 
       const shopModal = document.getElementById('shopModal');
-      document.getElementById('btnOpenShop').addEventListener('click', () => {
+      const rewardModalEl = document.getElementById('rewardModal');
+      let shopReturnFocus = null;
+      const openShopModal = (sourceButton) => {
         audio.init();
         renderShopModal();
+        shopReturnFocus = sourceButton || null;
+        if (rewardModalEl && !rewardModalEl.classList.contains('hidden')) {
+          rewardModalEl.toggleAttribute('inert', true);
+        }
         shopModal.classList.remove('hidden');
         shopModal.classList.add('flex');
-      });
-      document.getElementById('btnOpenShopFromReward').addEventListener('click', () => {
-        audio.init();
-        renderShopModal();
-        shopModal.classList.remove('hidden');
-        shopModal.classList.add('flex');
-      });
-      document.getElementById('btnCloseShop').addEventListener('click', () => {
+        requestAnimationFrame(() => document.getElementById('btnCloseShop')?.focus());
+      };
+      const closeShopModal = () => {
         shopModal.classList.add('hidden');
         shopModal.classList.remove('flex');
+        rewardModalEl?.toggleAttribute('inert', false);
+        if (shopReturnFocus && document.contains(shopReturnFocus)) shopReturnFocus.focus();
+        shopReturnFocus = null;
+      };
+      document.getElementById('btnOpenShop').addEventListener('click', (event) => {
+        openShopModal(event.currentTarget);
       });
+      document.getElementById('btnOpenShopFromReward').addEventListener('click', (event) => {
+        openShopModal(event.currentTarget);
+      });
+      document.getElementById('btnCloseShop').addEventListener('click', closeShopModal);
 
       document.getElementById('btnBuyMaxManaShop').addEventListener('click', () => {
         if (state.maxMana >= 5) {
