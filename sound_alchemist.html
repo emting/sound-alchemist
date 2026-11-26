@@ -1007,9 +1007,9 @@
         this.status = 'idle'; // idle | loading | ready | fallback
         this.reason = '';
         this.windowMs = 50;
-        this.entries = new Map(); // id -> { meta, envelope, encoded, buffer }
+        this.entries = new Map(); // id -> { meta, envelope, buffer }
         this.ctx = null;
-        this._preload = null;
+        this._loading = null;
         this.catalog = null;
         this.priority = [];
         this.requested = new Set();
@@ -1026,6 +1026,9 @@
         }
         this.gainLevel = 0.6;
         this.timeoutMs = 8000;
+        if (typeof fetch !== 'function' || location.protocol === 'file:') {
+          this._fallback('file:// 無法載入音訊資產');
+        }
       }
 
       async _fetch(path, type, priority = 'auto') {
@@ -1047,14 +1050,11 @@
         this.reason = reason;
       }
 
-      // Before the first audio gesture, only fetch; attachContext() enables decoding.
-      preload() {
-        if (this._preload) return this._preload;
-        this._preload = (async () => {
-          if (typeof fetch !== 'function' || location.protocol === 'file:') {
-            this._fallback('file:// 無法載入音訊資產');
-            return;
-          }
+      start(ctx) {
+        if (!ctx || typeof fetch !== 'function' || location.protocol === 'file:') return;
+        if (this._loading) return this._loading;
+        this.ctx = ctx;
+        this._loading = (async () => {
           this.status = 'loading';
           await enableOfflineAudio();
           let manifest;
@@ -1070,7 +1070,7 @@
           if (!this.catalog.size) this._fallback('manifest 內沒有 MP3');
           this._pump();
         })();
-        return this._preload;
+        return this._loading;
       }
 
       prioritize(ids) {
@@ -1085,7 +1085,7 @@
       }
 
       _needsWork(id) {
-        return !this.attempted.has(id) || (this.ctx && this.entries.get(id)?.encoded);
+        return !this.attempted.has(id);
       }
 
       _pump() {
@@ -1118,19 +1118,16 @@
         this.requested.delete(id);
         const meta = this.catalog.get(id);
         try {
-          let entry = this.entries.get(id);
-          if (!entry) {
-            const [envelope, encoded] = await Promise.all([
-              this._fetch(meta.envelope, 'json', priority),
-              this._fetch(meta.file, 'buffer', priority)
-            ]);
-            if (!Array.isArray(envelope?.rms) || !envelope.rms.length) throw new Error('bad envelope');
-            entry = { meta, envelope, encoded, buffer: null };
-            this.entries.set(id, entry);
-            this.status = 'ready';
-            this.reason = '';
-          }
-          if (this.ctx) await this._decode(id, entry);
+          const [envelope, encoded] = await Promise.all([
+            this._fetch(meta.envelope, 'json', priority),
+            this._fetch(meta.file, 'buffer', priority)
+          ]);
+          if (!Array.isArray(envelope?.rms) || !envelope.rms.length) throw new Error('bad envelope');
+          const entry = { meta, envelope, buffer: null };
+          this.entries.set(id, entry);
+          this.status = 'ready';
+          this.reason = '';
+          await this._decode(id, entry, encoded);
         } catch (e) {
           this.failed.add(id);
           this._retryWhenOnline();
@@ -1146,8 +1143,8 @@
         window.addEventListener('online', () => {
           this._retryArmed = false;
           if (!this.catalog) {
-            this._preload = null;
-            this.preload();
+            this._loading = null;
+            this.start(this.ctx);
           } else {
             for (const id of this.failed) this.attempted.delete(id);
             this.failed.clear();
@@ -1156,16 +1153,7 @@
         }, { once: true });
       }
 
-      attachContext(ctx) {
-        if (!ctx || this.ctx === ctx) return;
-        this.ctx = ctx;
-        this._pump();
-      }
-
-      _decode(id, entry) {
-        if (!entry.encoded) return;
-        const encoded = entry.encoded;
-        entry.encoded = null;
+      _decode(id, entry, encoded) {
         return new Promise(resolve => {
           const done = buffer => { entry.buffer = buffer; resolve(); };
           const fail = () => {
@@ -1260,7 +1248,6 @@
     }
 
     const audioAssets = new AudioAssetManager();
-    audioAssets.preload();
 
     // =========================================================================
     // 2. WEB AUDIO API REAL-TIME SOUND & ENVELOPE SYNTHESIZER
@@ -1300,7 +1287,6 @@
 
         this.compressor.connect(this.analyser);
         this.analyser.connect(this.ctx.destination);
-        audioAssets.attachContext(this.ctx);
         this.updateAmbientDrone(1);
       }
 
@@ -1903,8 +1889,17 @@
       install() {
         setInterval(() => this.tick(), 25);
         const wake = () => this.recover();
-        ['pointerdown', 'pointerup', 'touchend', 'keydown', 'click'].forEach(type => {
-          window.addEventListener(type, wake, { capture: true, passive: true });
+        let interacted = false;
+        const onGesture = event => {
+          if (event.isTrusted && !interacted && !audio.ctx) audio.init();
+          wake();
+          if (event.isTrusted && !interacted) {
+            interacted = true;
+            audioAssets.start(audio.ctx);
+          }
+        };
+        ['pointerdown', 'pointerup', 'touchstart', 'touchend', 'keydown', 'click'].forEach(type => {
+          window.addEventListener(type, onGesture, { capture: true, passive: true });
         });
         window.addEventListener('pageshow', wake);
         window.addEventListener('focus', wake);

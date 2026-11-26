@@ -139,7 +139,7 @@ test(`MP3 path over http under ${CPU_RATE}x CPU throttle: overloads, codex previ
   };
   // Test set-up only (not an input under test): a new game, so the player survives while a modal is open.
   const freshGame = async () => { await revive(); await page.evaluate(() => restartFullGame()); await sleep(300); };
-  // First cast creates the AudioContext; decoding starts there.
+  // The first cast is the gesture that starts downloading and decoding.
   steps.push(await castOnce(page, 0));
   const assetsAfterFirstCast = await assetStatus(page);
   await page.waitForFunction(() => window.__qa.assetStatus().decoded === 40, null, { timeout: 60000 });
