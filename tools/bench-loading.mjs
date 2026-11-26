@@ -1,51 +1,63 @@
-// node tools/bench-loading.mjs [site-directory]
+// node tools/bench-loading.mjs [site-directory] [--gesture]
 // Playwright Chromium from qa/ (npm ci && npx playwright install chromium there).
 import { readFile, stat } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { extname, resolve } from 'node:path';
 import { chromium } from '../qa/node_modules/playwright/index.mjs';
 
-const root = resolve(process.argv[2] || '.');
-const mime = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.mp3': 'audio/mpeg' };
+const args = process.argv.slice(2);
+const gestureOnly = args.includes('--gesture');
+const root = resolve(args.find(arg => arg !== '--gesture') || '.');
+const mime = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.mp3': 'audio/mpeg', '.css': 'text/css', '.woff2': 'font/woff2' };
 const originLog = [];
 const server = createServer(async (req, res) => {
   const path = new URL(req.url, 'http://localhost').pathname;
+  const entry = { url: path, bytes: 0 };
+  originLog.push(entry);
   const file = resolve(root, '.' + path);
   if (!file.startsWith(root + '/')) { res.writeHead(403).end(); return; }
   try {
     const mtime = (await stat(file)).mtime.toUTCString();
     if (req.headers['if-modified-since'] === mtime) {
-      originLog.push({ url: path, bytes: 0 });
       res.writeHead(304).end();
       return;
     }
     const body = await readFile(file);
-    originLog.push({ url: path, bytes: body.length });
+    entry.bytes = body.length;
     res.writeHead(200, { 'Content-Type': mime[extname(file)] || 'application/octet-stream', 'Last-Modified': mtime });
     res.end(body);
   } catch {
-    originLog.push({ url: path, bytes: 0 });
     res.writeHead(404).end();
   }
 });
 await new Promise(resolve => server.listen(8090, '127.0.0.1', resolve));
 const url = 'http://127.0.0.1:8090/sound_alchemist.html';
 const browser = await chromium.launch({
-  args: ['--autoplay-policy=no-user-gesture-required'],
+  args: gestureOnly ? [] : ['--autoplay-policy=no-user-gesture-required'],
 });
 
 try {
-  const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-  await context.addInitScript(() => {
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+    serviceWorkers: gestureOnly ? 'block' : 'allow',
+  });
+  await context.addInitScript(withoutWorker => {
+    if (withoutWorker) Object.defineProperty(navigator, 'serviceWorker', { value: undefined });
+    window.addEventListener('pointerdown', event => {
+      if (event.isTrusted) window.gestureAt ??= performance.now();
+    }, { capture: true });
     const decode = BaseAudioContext.prototype.decodeAudioData;
     BaseAudioContext.prototype.decodeAudioData = function (data, done, fail) {
       return decode.call(this, data, buffer => {
         window.firstDecodedAt ??= performance.now();
         window.lastDecodedAt = performance.now();
         done?.(buffer);
+        if (audioAssets.priority.some(id => audioAssets.entries.get(id)?.buffer === buffer)) {
+          window.firstPriorityDecodedAt ??= window.lastDecodedAt;
+        }
       }, fail);
     };
-  });
+  }, gestureOnly);
   const page = await context.newPage();
   const cdp = await context.newCDPSession(page);
   await cdp.send('Network.enable');
@@ -79,8 +91,15 @@ try {
     requests.clear();
     originLog.length = 0;
     await navigate();
-    // Open the game's Web Audio context at the earliest point the game exposes it.
-    await page.evaluate(() => audio.init());
+    let idleAt5s;
+    if (gestureOnly) {
+      await page.waitForFunction(() => performance.now() >= 5000);
+      idleAt5s = {
+        ...snapshot().origin,
+        envelopeRequests: originLog.filter(entry => entry.url.startsWith('/assets/audio/envelopes/')).length,
+      };
+    }
+    await page.locator('#btnLane0').click();
     await page.waitForFunction(() => audioAssets.summary().decoded > 0);
     const atFirstDecode = snapshot();
     await page.waitForFunction(() => audioAssets.summary().decoded === 40, null, { timeout: 60000 });
@@ -88,14 +107,16 @@ try {
     const timings = await page.evaluate(() => ({
       firstDecodedMs: Math.round(window.firstDecodedAt),
       allDecodedMs: Math.round(window.lastDecodedAt),
-      serviceWorker: !!navigator.serviceWorker.controller,
+      gestureToFirstPriorityDecodeMs: Math.round(window.firstPriorityDecodedAt - window.gestureAt),
+      gestureToAllDecodedMs: Math.round(window.lastDecodedAt - window.gestureAt),
+      serviceWorker: !!navigator.serviceWorker?.controller,
       assets: audioAssets.summary(),
     }));
-    return { ...timings, atFirstDecode, full: snapshot() };
+    return { ...timings, idleAt5s, atFirstDecode, full: snapshot() };
   };
   const opts = { waitUntil: 'domcontentloaded' };
   const cold = await measure(() => page.goto(url, opts));
-  const repeat = await measure(() => page.reload(opts));
+  const repeat = gestureOnly ? undefined : await measure(() => page.reload(opts));
   console.log(JSON.stringify({ url, chromium: browser.version(), cold, repeat }, null, 2));
 } finally {
   await browser.close();

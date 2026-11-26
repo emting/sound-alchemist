@@ -105,7 +105,13 @@
       background: linear-gradient(145deg, rgba(28, 12, 54, 0.92) 0%, rgba(13, 5, 28, 0.96) 100%);
       box-shadow: 0 12px 36px -8px rgba(236, 72, 153, 0.22), inset 0 1px 0 0 rgba(0, 245, 212, 0.18);
     }
-    main .glass-panel {
+    main .glass-panel,
+    #rewardModal > .glass-panel,
+    #shopModal > .glass-panel,
+    #simModal > .glass-panel,
+    #gameOverModal > .glass-panel,
+    #codexModal > .glass-panel,
+    #guideModal > .glass-panel {
       backdrop-filter: none;
       -webkit-backdrop-filter: none;
     }
@@ -589,7 +595,7 @@
   </div>
 
   <!-- Wave Clear / Reward 3-Choice Modal -->
-  <div id="rewardModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/85 backdrop-blur-md p-4">
+  <div id="rewardModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/95 p-4">
     <div class="glass-panel border border-amber-500/60 rounded-2xl max-w-3xl w-full p-5 shadow-2xl">
       <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3 mb-4">
         <div>
@@ -613,7 +619,7 @@
   </div>
 
   <!-- Acoustic Black Market Shop Modal -->
-  <div id="shopModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/85 backdrop-blur-md p-3 sm:p-6">
+  <div id="shopModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/95 p-3 sm:p-6">
     <div class="glass-panel border border-yellow-500/50 rounded-2xl max-w-5xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-5 py-3.5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 bg-slate-950/60">
         <div>
@@ -672,7 +678,7 @@
   </div>
 
   <!-- 10-Run AI Balance Simulator Modal -->
-  <div id="simModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/85 backdrop-blur-md p-3 sm:p-6">
+  <div id="simModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/95 p-3 sm:p-6">
     <div class="glass-panel border border-fuchsia-500/50 rounded-2xl max-w-5xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-5 py-3.5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 bg-slate-950/60">
         <div>
@@ -711,7 +717,7 @@
   </div>
 
   <!-- Game Over / Victory Settlement Modal -->
-  <div id="gameOverModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/90 backdrop-blur-md p-4">
+  <div id="gameOverModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/95 p-4">
     <div class="glass-panel border border-rose-500/60 rounded-2xl max-w-lg w-full p-6 shadow-2xl text-center">
       <div id="goIconBadge" class="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-400 flex items-center justify-center mx-auto font-black text-xl mb-3">
         ✕
@@ -748,7 +754,7 @@
   </div>
 
   <!-- Full 30 Cards & 10 Relics Codex & Soundboard Modal -->
-  <div id="codexModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/85 backdrop-blur-md p-3 sm:p-6">
+  <div id="codexModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/95 p-3 sm:p-6">
     <div class="glass-panel border border-slate-700 rounded-2xl max-w-6xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-5 py-3.5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 bg-slate-950/60">
         <div>
@@ -784,7 +790,7 @@
   </div>
 
   <!-- Casper Sound Library Stats & Architecture Guide Modal -->
-  <div id="guideModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/85 backdrop-blur-md p-3 sm:p-6">
+  <div id="guideModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/95 p-3 sm:p-6">
     <div class="glass-panel border border-slate-700 rounded-2xl max-w-4xl w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-5 py-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
         <div>
@@ -1185,9 +1191,9 @@
         this.status = 'idle'; // idle | loading | ready | fallback
         this.reason = '';
         this.windowMs = 50;
-        this.entries = new Map(); // id -> { meta, envelope, encoded, buffer }
+        this.entries = new Map(); // id -> { meta, envelope, buffer }
         this.ctx = null;
-        this._preload = null;
+        this._loading = null;
         this.catalog = null;
         this.priority = [];
         this.requested = new Set();
@@ -1204,6 +1210,9 @@
         }
         this.gainLevel = 0.6;
         this.timeoutMs = 8000;
+        if (typeof fetch !== 'function' || location.protocol === 'file:') {
+          this._fallback('file:// 無法載入音訊資產');
+        }
       }
 
       async _fetch(path, type, priority = 'auto') {
@@ -1225,14 +1234,11 @@
         this.reason = reason;
       }
 
-      // Before the first audio gesture, only fetch; attachContext() enables decoding.
-      preload() {
-        if (this._preload) return this._preload;
-        this._preload = (async () => {
-          if (typeof fetch !== 'function' || location.protocol === 'file:') {
-            this._fallback('file:// 無法載入音訊資產');
-            return;
-          }
+      start(ctx) {
+        if (!ctx || typeof fetch !== 'function' || location.protocol === 'file:') return;
+        if (this._loading) return this._loading;
+        this.ctx = ctx;
+        this._loading = (async () => {
           this.status = 'loading';
           await enableOfflineAudio();
           let manifest;
@@ -1248,7 +1254,7 @@
           if (!this.catalog.size) this._fallback('manifest 內沒有 MP3');
           this._pump();
         })();
-        return this._preload;
+        return this._loading;
       }
 
       prioritize(ids) {
@@ -1263,7 +1269,7 @@
       }
 
       _needsWork(id) {
-        return !this.attempted.has(id) || (this.ctx && this.entries.get(id)?.encoded);
+        return !this.attempted.has(id);
       }
 
       _pump() {
@@ -1296,19 +1302,16 @@
         this.requested.delete(id);
         const meta = this.catalog.get(id);
         try {
-          let entry = this.entries.get(id);
-          if (!entry) {
-            const [envelope, encoded] = await Promise.all([
-              this._fetch(meta.envelope, 'json', priority),
-              this._fetch(meta.file, 'buffer', priority)
-            ]);
-            if (!Array.isArray(envelope?.rms) || !envelope.rms.length) throw new Error('bad envelope');
-            entry = { meta, envelope, encoded, buffer: null };
-            this.entries.set(id, entry);
-            this.status = 'ready';
-            this.reason = '';
-          }
-          if (this.ctx) await this._decode(id, entry);
+          const [envelope, encoded] = await Promise.all([
+            this._fetch(meta.envelope, 'json', priority),
+            this._fetch(meta.file, 'buffer', priority)
+          ]);
+          if (!Array.isArray(envelope?.rms) || !envelope.rms.length) throw new Error('bad envelope');
+          const entry = { meta, envelope, buffer: null };
+          this.entries.set(id, entry);
+          this.status = 'ready';
+          this.reason = '';
+          await this._decode(id, entry, encoded);
         } catch (e) {
           this.failed.add(id);
           this._retryWhenOnline();
@@ -1324,8 +1327,8 @@
         window.addEventListener('online', () => {
           this._retryArmed = false;
           if (!this.catalog) {
-            this._preload = null;
-            this.preload();
+            this._loading = null;
+            this.start(this.ctx);
           } else {
             for (const id of this.failed) this.attempted.delete(id);
             this.failed.clear();
@@ -1334,16 +1337,7 @@
         }, { once: true });
       }
 
-      attachContext(ctx) {
-        if (!ctx || this.ctx === ctx) return;
-        this.ctx = ctx;
-        this._pump();
-      }
-
-      _decode(id, entry) {
-        if (!entry.encoded) return;
-        const encoded = entry.encoded;
-        entry.encoded = null;
+      _decode(id, entry, encoded) {
         return new Promise(resolve => {
           const done = buffer => { entry.buffer = buffer; resolve(); };
           const fail = () => {
@@ -1438,7 +1432,6 @@
     }
 
     const audioAssets = new AudioAssetManager();
-    audioAssets.preload();
 
     // =========================================================================
     // 2. WEB AUDIO API REAL-TIME SOUND & ENVELOPE SYNTHESIZER
@@ -1478,7 +1471,6 @@
 
         this.compressor.connect(this.analyser);
         this.analyser.connect(this.ctx.destination);
-        audioAssets.attachContext(this.ctx);
         this.updateAmbientDrone(1);
       }
 
@@ -2081,8 +2073,17 @@
       install() {
         setInterval(() => this.tick(), 25);
         const wake = () => this.recover();
-        ['pointerdown', 'pointerup', 'touchend', 'keydown', 'click'].forEach(type => {
-          window.addEventListener(type, wake, { capture: true, passive: true });
+        let interacted = false;
+        const onGesture = event => {
+          if (event.isTrusted && !interacted && !audio.ctx) audio.init();
+          wake();
+          if (event.isTrusted && !interacted) {
+            interacted = true;
+            audioAssets.start(audio.ctx);
+          }
+        };
+        ['pointerdown', 'pointerup', 'touchstart', 'touchend', 'keydown', 'click'].forEach(type => {
+          window.addEventListener(type, onGesture, { capture: true, passive: true });
         });
         window.addEventListener('pageshow', wake);
         window.addEventListener('focus', wake);

@@ -36,6 +36,8 @@ async function openGame(page) {
   await page.evaluate(() => document.fonts.ready);
   const hookError = await page.evaluate(() => window.__qa.hookError || null);
   if (hookError) throw new Error(hookError);
+  await page.waitForFunction(() => state.awaitingStart &&
+    !document.getElementById('startOverlay').classList.contains('hidden'));
   await page.locator('#btnStartGame').click();
   await page.waitForFunction(() => !state.awaitingStart && state.enemies.length > 0);
   if (await page.evaluate(() => innerWidth <= 480)) {
