@@ -5257,8 +5257,7 @@
           codexModal.classList.remove('flex');
           guideModal.classList.add('hidden');
           guideModal.classList.remove('flex');
-          shopModal.classList.add('hidden');
-          shopModal.classList.remove('flex');
+          if (!shopModal.classList.contains('hidden')) closeShopModal();
           simModal.classList.add('hidden');
           simModal.classList.remove('flex');
         }
