@@ -35,6 +35,8 @@ test('wave clear awards gold once, keeps choices stable and advances or restarts
   expect(stable).toEqual({ gold: expectedGold, sameChoices: true });
 
   await choices.first().click();
+  await expect(page.locator('#btnConfirmReward')).toBeEnabled();
+  await page.locator('#btnConfirmReward').click();
   await expect(reward).toBeHidden();
   expect(await page.evaluate(() => state.wave === 2 && state.enemies.length > 0)).toBe(true);
 

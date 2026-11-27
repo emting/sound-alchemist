@@ -2,8 +2,8 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>《聲波鍊金術士》Audio-Synced Combat v3.0｜音訊同步 Roguelike 塔防網頁遊戲</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>《聲波鍊金術士》Sound Alchemist</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230f172a'/><path d='M4 16h4l3-8 4 16 4-12 3 4h6' fill='none' stroke='%23f59e0b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'/></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -97,8 +97,6 @@
     /* Studio-grade Glassmorphic Panels */
     .glass-panel {
       background: linear-gradient(145deg, rgba(19, 27, 46, 0.92) 0%, rgba(11, 15, 27, 0.95) 100%);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
       box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.7), inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
     }
     body.mode-stylized .glass-panel {
@@ -157,6 +155,28 @@
       background: rgba(148, 163, 184, 0.4);
       border-radius: 9999px;
     }
+    :focus-visible {
+      outline: 2px solid var(--accent-sec);
+      outline-offset: 2px;
+    }
+    .relic-icon {
+      flex: 0 0 auto;
+      filter: drop-shadow(0 0 3px rgba(34, 211, 238, 0.35));
+    }
+    #relicBar button {
+      min-height: 32px;
+    }
+    #btnReleaseCast:disabled {
+      cursor: not-allowed;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.001ms !important;
+      }
+    }
     #startOverlay > .glass-panel {
       backdrop-filter: none;
       -webkit-backdrop-filter: none;
@@ -184,8 +204,20 @@
       }
       #btnMobileMenu {
         display: inline-flex;
-        padding: 0.25rem 0.5rem;
-        font-size: 10px;
+        min-height: 44px;
+        align-items: center;
+        padding: 0.25rem 0.65rem;
+        font-size: 11px;
+      }
+      #headerActions button,
+      #btnCampfireRest {
+        min-height: 40px;
+      }
+      #relicBar .relic-name {
+        display: none;
+      }
+      #relicBar .relic-id {
+        font-size: 9px;
       }
       #headerActions:not([data-open="true"]) {
         display: none;
@@ -275,6 +307,21 @@
         padding: 0.25rem 0.35rem;
         font-size: 9px;
       }
+      #rewardChoicesContainer {
+        display: flex;
+        gap: 0.75rem;
+        overflow-x: auto;
+        padding-bottom: 0.5rem;
+        scroll-snap-type: x mandatory;
+      }
+      #rewardChoicesContainer > * {
+        flex: 0 0 82%;
+        scroll-snap-align: center;
+      }
+      #rewardModal > .glass-panel {
+        max-height: 92vh;
+        overflow-y: auto;
+      }
       #handContainer[data-compact] {
         grid-template-columns: repeat(5, minmax(0, 1fr));
         gap: 0.25rem;
@@ -355,11 +402,11 @@
           盲聽挑戰：關
         </button>
 
-        <button id="btnOpenShop" type="button" class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-yellow-500/25 to-amber-500/15 hover:brightness-125 text-yellow-300 border border-yellow-400/50 transition shadow-sm">
+        <button id="btnOpenShop" type="button" class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-900/90 hover:bg-slate-800 text-yellow-300 border border-slate-700/90 transition">
           黑市商店 (鍛造/刪牌)
         </button>
 
-        <button id="btnOpenSim" type="button" class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-fuchsia-500/25 to-purple-500/20 hover:brightness-125 text-fuchsia-300 border border-fuchsia-400/50 transition">
+        <button id="btnOpenSim" type="button" class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-900/90 hover:bg-slate-800 text-slate-400 border border-slate-700/90 transition">
           10輪平衡壓測
         </button>
 
@@ -371,11 +418,11 @@
           音效：開啟
         </button>
 
-        <button id="btnOpenCodex" type="button" class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-400/50 transition">
+        <button id="btnOpenCodex" type="button" class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-900/90 hover:bg-slate-800 text-sky-300 border border-slate-700/90 transition">
           圖鑑與試聽室 (30卡/10遺物)
         </button>
 
-        <button id="btnOpenGuide" type="button" class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-400/50 transition">
+        <button id="btnOpenGuide" type="button" class="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-900/90 hover:bg-slate-800 text-emerald-300 border border-slate-700/90 transition">
           音效庫數據與玩法
         </button>
       </div>
@@ -442,7 +489,7 @@
 
       <!-- Owned Acoustic Relics Medallions & Campfire Button -->
       <div class="col-span-2 sm:col-span-4 flex items-center justify-between gap-2 pl-1">
-        <div class="flex-1 overflow-x-auto">
+        <div class="flex-1 min-w-0 overflow-x-auto pb-1">
           <div class="text-[10px] text-slate-400 mb-1 flex items-center justify-between">
             <span class="font-semibold text-slate-300 max-[481px]:sr-only">聲學遺物徽章（點擊試聽）：</span>
             <div class="flex items-center gap-1">
@@ -453,7 +500,7 @@
           </div>
           <div id="relicBar" class="flex items-center gap-1.5 min-h-[30px]"></div>
         </div>
-        <button id="btnCampfireRest" type="button" class="px-3 py-2 rounded-xl text-xs font-black bg-gradient-to-b from-amber-500/30 to-orange-600/20 hover:brightness-125 text-amber-200 border border-amber-400/50 whitespace-nowrap transition shadow-md" title="消耗 25 金幣點燃存檔點營火回復耐久">
+        <button id="btnCampfireRest" type="button" class="flex-shrink-0 px-3 py-2 rounded-xl text-xs font-black bg-gradient-to-b from-amber-500/30 to-orange-600/20 hover:brightness-125 text-amber-200 border border-amber-400/50 whitespace-nowrap transition shadow-md" title="消耗 25 金幣點燃存檔點營火回復耐久">
           營火修復 (25G)
         </button>
       </div>
@@ -469,10 +516,10 @@
 
     <!-- Center Stage: Studio-Grade Parallax Battlefield Canvas + Oscilloscope -->
     <section class="relative w-full bg-slate-950 border-2 border-slate-800/90 rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.85)] min-[481px]:h-[380px] max-[481px]:flex max-[481px]:flex-col">
-      <canvas id="battleCanvas" class="w-full h-full block cursor-pointer max-[481px]:order-3 max-[481px]:h-[200px]"></canvas>
+      <canvas id="battleCanvas" role="img" aria-label="聲波鍊金塔防戰場：三條立體聲道、敵人攻擊預告、施法蓄力環與音訊波形" class="w-full h-full block cursor-pointer max-[481px]:order-3 max-[481px]:h-[240px]"></canvas>
 
       <!-- Top-Center Boss Alert Banner -->
-      <div id="bossAlertBanner" class="hidden absolute top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-rose-950/95 via-purple-950/95 to-rose-950/95 border border-rose-400/70 px-4 py-1.5 rounded-full text-xs font-black text-rose-200 shadow-[0_0_25px_rgba(244,63,94,0.45)] z-10 items-center gap-2 max-[481px]:static max-[481px]:order-2 max-[481px]:mx-1 max-[481px]:translate-x-0">
+      <div id="bossAlertBanner" class="hidden absolute top-14 left-1/2 -translate-x-1/2 bg-gradient-to-r from-rose-950/95 via-purple-950/95 to-rose-950/95 border border-rose-400/70 px-4 py-1.5 rounded-full text-xs font-black text-rose-200 shadow-[0_0_25px_rgba(244,63,94,0.45)] z-10 items-center gap-2 max-[481px]:static max-[481px]:order-2 max-[481px]:mx-1 max-[481px]:translate-x-0">
         <span class="w-2.5 h-2.5 rounded-full bg-rose-400 animate-ping"></span>
         <span id="bossAlertText">ACT BOSS 登場：聲學干擾生效中</span>
       </div>
@@ -524,8 +571,8 @@
 
       <!-- Bottom-Right Peak Release Action Button & Next Turn -->
       <div class="ml-auto flex items-center gap-2 z-10 pointer-events-auto max-[481px]:contents">
-        <button id="btnReleaseCast" type="button" disabled class="px-4 py-2 rounded-xl text-xs sm:text-sm font-black tracking-wide bg-slate-900/90 text-slate-500 border border-slate-700/80 shadow-xl transition-all">
-          <span class="max-[481px]:hidden">[空白鍵 / 點擊畫面] 峰值釋放 (PEAK RELEASE)</span><span class="min-[481px]:hidden">峰值釋放</span>
+        <button id="btnReleaseCast" type="button" disabled class="px-4 py-2 rounded-xl text-xs sm:text-sm font-black tracking-wide bg-slate-800/95 text-slate-300 border border-slate-500/80 shadow-xl transition-all">
+          <span class="max-[481px]:hidden">[空白鍵 / 點擊畫面] 峰值釋放 (PEAK RELEASE)</span><span class="min-[481px]:hidden">峰值釋放</span><span id="releaseCastTiming" class="min-[481px]:hidden ml-1 text-[10px] font-mono-code"></span>
         </button>
         <button id="btnEndTurn" type="button" class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-black bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white border border-indigo-400/60 shadow-xl transition">
           <span class="max-[481px]:hidden">重抽換牌 / 下一波 [R]</span><span class="min-[481px]:hidden">換牌<br>下一波</span>
@@ -576,7 +623,7 @@
   </main>
 
   <!-- Toast Notification Banner -->
-  <div id="toastBanner" class="fixed bottom-5 right-5 z-50 pointer-events-none opacity-0 translate-y-2 transition-all duration-200 bg-slate-950/95 border border-amber-400/70 text-amber-200 px-4 py-3 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.85)] text-xs font-bold max-w-sm"></div>
+  <div id="toastBanner" role="status" aria-live="polite" class="fixed bottom-5 right-5 z-50 pointer-events-none opacity-0 translate-y-2 transition-all duration-200 bg-slate-950/95 border border-amber-400/70 text-amber-200 px-4 py-3 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.85)] text-xs font-bold max-w-sm"></div>
 
   <div id="startOverlay" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/95 p-4" role="dialog" aria-modal="true" aria-labelledby="startOverlayTitle">
     <div class="glass-panel border border-amber-500/60 rounded-2xl max-w-lg w-full p-5 shadow-2xl">
@@ -595,8 +642,8 @@
   </div>
 
   <!-- Wave Clear / Reward 3-Choice Modal -->
-  <div id="rewardModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/95 p-4">
-    <div class="glass-panel border border-amber-500/60 rounded-2xl max-w-3xl w-full p-5 shadow-2xl">
+  <div id="rewardModal" role="dialog" aria-modal="true" aria-label="戰利品三選一" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/95 p-4">
+    <div class="glass-panel border border-amber-500/60 rounded-2xl max-w-3xl w-full max-h-[92vh] overflow-y-auto p-5 shadow-2xl">
       <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3 mb-4">
         <div>
           <span class="text-xs font-mono-code uppercase tracking-wider text-amber-400">WAVE CLEARED · 過關號角響起（連擊折半保留 50%）</span>
@@ -615,11 +662,17 @@
         系統已觸發 <a href="https://www.casper.tw/sound-effects/level-complete/" target="_blank" rel="noopener noreferrer" class="text-sky-400 underline">過關音效（137 個）</a> 與 <a href="https://www.casper.tw/sound-effects/zh-tw/game/" target="_blank" rel="noopener noreferrer" class="text-sky-400 underline">轉蛋旋鈕與掉落聲</a>，請選擇一張新卡牌永久納入牌庫或領取聲學遺物：
       </p>
       <div id="rewardChoicesContainer" class="grid grid-cols-1 sm:grid-cols-3 gap-3"></div>
+      <div class="mt-4 pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
+        <p id="rewardSelectionHint" class="text-xs text-slate-400">先選擇一項戰利品，再確認領取；確認前可以反悔。</p>
+        <button id="btnConfirmReward" type="button" disabled class="px-4 py-2 rounded-xl text-xs font-black bg-emerald-500 hover:bg-emerald-400 text-slate-950 border border-emerald-300 shadow-lg transition disabled:opacity-40 disabled:cursor-not-allowed">
+          確認領取戰利品
+        </button>
+      </div>
     </div>
   </div>
 
   <!-- Acoustic Black Market Shop Modal -->
-  <div id="shopModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/95 p-3 sm:p-6">
+  <div id="shopModal" role="dialog" aria-modal="true" aria-label="聲波鍊金黑市" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/95 p-3 sm:p-6">
     <div class="glass-panel border border-yellow-500/50 rounded-2xl max-w-5xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-5 py-3.5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 bg-slate-950/60">
         <div>
@@ -678,7 +731,7 @@
   </div>
 
   <!-- 10-Run AI Balance Simulator Modal -->
-  <div id="simModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/95 p-3 sm:p-6">
+  <div id="simModal" role="dialog" aria-modal="true" aria-label="平衡壓測模擬器" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/95 p-3 sm:p-6">
     <div class="glass-panel border border-fuchsia-500/50 rounded-2xl max-w-5xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-5 py-3.5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 bg-slate-950/60">
         <div>
@@ -717,7 +770,7 @@
   </div>
 
   <!-- Game Over / Victory Settlement Modal -->
-  <div id="gameOverModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/95 p-4">
+  <div id="gameOverModal" role="dialog" aria-modal="true" aria-label="遊戲結算" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/95 p-4">
     <div class="glass-panel border border-rose-500/60 rounded-2xl max-w-lg w-full p-6 shadow-2xl text-center">
       <div id="goIconBadge" class="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-400 flex items-center justify-center mx-auto font-black text-xl mb-3">
         ✕
@@ -754,7 +807,7 @@
   </div>
 
   <!-- Full 30 Cards & 10 Relics Codex & Soundboard Modal -->
-  <div id="codexModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/95 p-3 sm:p-6">
+  <div id="codexModal" role="dialog" aria-modal="true" aria-label="卡牌與遺物圖鑑" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/95 p-3 sm:p-6">
     <div class="glass-panel border border-slate-700 rounded-2xl max-w-6xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-5 py-3.5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 bg-slate-950/60">
         <div>
@@ -790,7 +843,7 @@
   </div>
 
   <!-- Casper Sound Library Stats & Architecture Guide Modal -->
-  <div id="guideModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/95 p-3 sm:p-6">
+  <div id="guideModal" role="dialog" aria-modal="true" aria-label="音效庫數據與玩法指南" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/95 p-3 sm:p-6">
     <div class="glass-panel border border-slate-700 rounded-2xl max-w-4xl w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="px-5 py-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
         <div>
@@ -1101,7 +1154,7 @@
         : 'M 10 38 Q 55 34 96 8 L 114 36 L 130 38';
 
       if (card.faction === '奧術元素流') {
-        return `<svg viewBox="0 0 140 44" class="w-full h-11 rounded-lg bg-slate-950/90 border border-sky-500/30">
+        return `<svg viewBox="0 0 140 44" preserveAspectRatio="none" class="w-full h-11 rounded-lg bg-slate-950/90 border border-sky-500/30">
           <defs>
             <linearGradient id="g_${card.id}" x1="0" y1="0" x2="1" y2="1">
               <stop offset="0%" stop-color="#0ea5e9" stop-opacity="0.35"/>
@@ -1116,7 +1169,7 @@
         </svg>`;
       }
       if (card.faction === '重工星艦流') {
-        return `<svg viewBox="0 0 140 44" class="w-full h-11 rounded-lg bg-slate-950/90 border border-amber-500/30">
+        return `<svg viewBox="0 0 140 44" preserveAspectRatio="none" class="w-full h-11 rounded-lg bg-slate-950/90 border border-amber-500/30">
           <rect width="140" height="44" fill="rgba(245,158,11,0.12)"/>
           <polygon points="16,22 24,10 36,10 44,22 36,34 24,34" fill="none" stroke="#f59e0b" stroke-width="1.5"/>
           <circle cx="30" cy="22" r="5" fill="#fbbf24"/>
@@ -1125,7 +1178,7 @@
         </svg>`;
       }
       if (card.faction === '古樂共鳴流') {
-        return `<svg viewBox="0 0 140 44" class="w-full h-11 rounded-lg bg-slate-950/90 border border-emerald-500/30">
+        return `<svg viewBox="0 0 140 44" preserveAspectRatio="none" class="w-full h-11 rounded-lg bg-slate-950/90 border border-emerald-500/30">
           <rect width="140" height="44" fill="rgba(16,185,129,0.12)"/>
           <line x1="14" y1="13" x2="46" y2="13" stroke="#34d399" stroke-width="1.1"/>
           <line x1="14" y1="22" x2="46" y2="22" stroke="#6ee7b7" stroke-width="1.1"/>
@@ -1136,7 +1189,7 @@
         </svg>`;
       }
       if (card.faction === '混沌諧星流') {
-        return `<svg viewBox="0 0 140 44" class="w-full h-11 rounded-lg bg-slate-950/90 border border-pink-500/30">
+        return `<svg viewBox="0 0 140 44" preserveAspectRatio="none" class="w-full h-11 rounded-lg bg-slate-950/90 border border-pink-500/30">
           <rect width="140" height="44" fill="rgba(236,72,153,0.13)"/>
           <circle cx="24" cy="24" r="8" fill="rgba(192,132,252,0.35)" stroke="#f472b6" stroke-width="1.4"/>
           <circle cx="35" cy="17" r="5" fill="rgba(168,85,247,0.35)" stroke="#e879f9" stroke-width="1.2"/>
@@ -1145,7 +1198,7 @@
           <circle cx="${peakX}" cy="8" r="3" fill="#a3e635"/>
         </svg>`;
       }
-      return `<svg viewBox="0 0 140 44" class="w-full h-11 rounded-lg bg-slate-950/90 border border-slate-700">
+      return `<svg viewBox="0 0 140 44" preserveAspectRatio="none" class="w-full h-11 rounded-lg bg-slate-950/90 border border-slate-700">
         <rect width="140" height="44" fill="rgba(148,163,184,0.1)"/>
         <path d="M 24 12 L 24 26 Q 24 32 30 32 Q 36 32 36 26 L 36 12 M 30 32 L 30 38" fill="none" stroke="#cbd5e1" stroke-width="1.6"/>
         <path d="${envPath}" fill="none" stroke="#94a3b8" stroke-width="1.8"/>
@@ -2153,6 +2206,8 @@
       bestWavesCleared: 1
     };
 
+    let selectedRewardChoice = null;
+
     const TUTORIAL_STORAGE_KEY = 'soundAlchemist.tutorialDone';
 
     function hasCompletedTutorial() {
@@ -2772,13 +2827,15 @@
       const releaseBtn = document.getElementById('btnReleaseCast');
       if (releaseBtn) {
         releaseBtn.disabled = true;
-        releaseBtn.className = 'px-4 py-2 rounded-xl text-xs sm:text-sm font-black tracking-wide bg-slate-900/90 text-slate-500 border border-slate-700/80 shadow-xl transition-all';
+        releaseBtn.className = 'px-4 py-2 rounded-xl text-xs sm:text-sm font-black tracking-wide bg-slate-800/95 text-slate-300 border border-slate-500/80 shadow-xl transition-all';
       }
       const badge = document.getElementById('castHintBadge');
       if (badge) {
         badge.textContent = '等待出牌...';
         badge.className = 'text-[11px] font-mono-code px-2.5 py-0.5 rounded-full bg-slate-900 text-slate-300 border border-slate-700';
       }
+      const timing = document.getElementById('releaseCastTiming');
+      if (timing) timing.textContent = '';
     }
 
     function triggerPachinkoBarrage() {
@@ -3103,6 +3160,11 @@
 
       title.textContent = `第 ${state.wave} 波防衛成功！請選擇一項聲學戰利品納入牌庫`;
       container.innerHTML = '';
+      selectedRewardChoice = null;
+      const confirmBtn = document.getElementById('btnConfirmReward');
+      const hint = document.getElementById('rewardSelectionHint');
+      if (confirmBtn) confirmBtn.disabled = true;
+      if (hint) hint.textContent = '先選擇一項戰利品，再確認領取；確認前可以反悔。';
 
       const unownedRelics = ALL_RELICS.filter(r => !state.ownedRelics.includes(r.id));
       const choices = [];
@@ -3115,15 +3177,19 @@
         choices.push({ type: 'card', item: shuffledCards[2] });
       }
 
-      choices.forEach(ch => {
+      choices.forEach((ch, choiceIndex) => {
         const cardEl = document.createElement('div');
-        cardEl.className = 'tcg-card p-4 rounded-xl border border-slate-700 hover:border-amber-400 flex flex-col justify-between gap-3 cursor-pointer transition';
+        cardEl.className = 'reward-choice tcg-card p-4 rounded-xl border border-slate-700 hover:border-amber-400 flex flex-col justify-between gap-3 cursor-pointer transition';
+        cardEl.setAttribute('role', 'button');
+        cardEl.setAttribute('tabindex', '0');
+        cardEl.dataset.rewardIndex = String(choiceIndex);
+        cardEl.dataset.rewardType = ch.type;
         if (ch.type === 'relic') {
           const r = ch.item;
           cardEl.innerHTML = `
             <div>
               <div class="flex items-center justify-between text-xs mb-1">
-                <span class="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold">${r.icon || '✦'} 聲學遺物 · ${r.rarity}</span>
+                <span class="px-2 py-0.5 rounded font-bold inline-flex items-center gap-1.5 ${getRarityBadgeStyle(r.rarity)}">${getRelicIconSVG(r)} 聲學遺物 · ${r.rarity}</span>
                 <span class="font-mono-code text-slate-400">${r.id}</span>
               </div>
               <h3 class="text-base font-extrabold text-amber-300 mt-1">${r.name}</h3>
@@ -3131,14 +3197,9 @@
             </div>
             <div class="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-sky-400">
               <span>音效：${r.sfxName}</span>
-              <span class="font-bold text-amber-300">點擊領取 →</span>
+              <span class="font-bold text-amber-300 reward-choice-cta">選擇遺物</span>
             </div>
           `;
-          cardEl.addEventListener('click', () => {
-            state.ownedRelics.push(r.id);
-            showToast(`獲得聲學遺物：【${r.name}】！`);
-            advanceToNextWave();
-          });
         } else {
           const c = ch.item;
           cardEl.innerHTML = `
@@ -3154,25 +3215,66 @@
             </div>
             <div class="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-sky-400">
               <span>音效：${c.sfxName}</span>
-              <span class="font-bold text-emerald-300">永久加入牌庫並上手 →</span>
+              <span class="font-bold text-emerald-300 reward-choice-cta">選擇卡牌</span>
             </div>
           `;
-          cardEl.addEventListener('click', () => {
-            const inst = cloneCardInstance(c, false);
-            state.masterDeck.push(inst);
-            if (state.hand.length >= 5) {
-              state.discardPile.push(state.hand.shift());
-            }
-            state.hand.push(inst);
-            showToast(`已將【${c.name}】永久加入牌庫並放入當前手牌！`);
-            advanceToNextWave();
-          });
         }
+        const select = () => selectRewardChoice(ch, cardEl);
+        cardEl.addEventListener('click', select);
+        cardEl.addEventListener('keydown', event => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            select();
+          }
+        });
         container.appendChild(cardEl);
       });
 
       modal.classList.remove('hidden');
       modal.classList.add('flex');
+    }
+
+    function selectRewardChoice(choice, selectedEl) {
+      selectedRewardChoice = choice;
+      document.querySelectorAll('#rewardChoicesContainer .reward-choice').forEach(el => {
+        const selected = el === selectedEl;
+        el.classList.toggle('border-emerald-300', selected);
+        el.classList.toggle('ring-2', selected);
+        el.classList.toggle('ring-emerald-300/70', selected);
+        el.classList.toggle('border-slate-700', !selected);
+        el.setAttribute('aria-pressed', String(selected));
+        const cta = el.querySelector('.reward-choice-cta');
+        if (cta) cta.textContent = selected ? '✓ 已選擇' : (el.dataset.rewardType === 'relic' ? '選擇遺物' : '選擇卡牌');
+      });
+      const confirmBtn = document.getElementById('btnConfirmReward');
+      const hint = document.getElementById('rewardSelectionHint');
+      if (confirmBtn) confirmBtn.disabled = false;
+      if (hint) {
+        hint.textContent = choice.type === 'relic'
+          ? `準備領取遺物【${choice.item.name}】。`
+          : `準備把【${choice.item.name}】永久加入牌庫並放入手牌。`;
+      }
+    }
+
+    function claimSelectedReward() {
+      const choice = selectedRewardChoice;
+      if (!choice) return;
+      selectedRewardChoice = null;
+      if (choice.type === 'relic') {
+        const r = choice.item;
+        state.ownedRelics.push(r.id);
+        showToast(`獲得聲學遺物：【${r.name}】！`);
+      } else {
+        const c = choice.item;
+        const inst = cloneCardInstance(c, false);
+        state.masterDeck.push(inst);
+        if (state.hand.length >= 5) {
+          state.discardPile.push(state.hand.shift());
+        }
+        state.hand.push(inst);
+        showToast(`已將【${c.name}】永久加入牌庫並放入當前手牌！`);
+      }
+      advanceToNextWave();
     }
 
     function advanceToNextWave() {
@@ -3606,7 +3708,7 @@
               : 'border-sky-400/50 bg-sky-500/15 text-sky-200');
           btn.className = `px-2.5 py-0.5 rounded-lg text-[11px] font-bold border whitespace-nowrap hover:brightness-125 transition flex items-center gap-1 ${rarityBorder}`;
           btn.title = `${r.name}（${r.rarity}）：${r.desc}\n對應音效：${r.sfxName}`;
-          btn.innerHTML = `<span>${r.icon || '✦'}</span><span>${r.id} ${r.name}</span>`;
+          btn.innerHTML = `${getRelicIconSVG(r)}<span class="relic-id">${r.id}</span><span class="relic-name">${r.name}</span>`;
           btn.addEventListener('click', () => {
             audio.playRelic(r);
             setTelemetry(`${r.sfxName}（遺物觸發音）`, `聲學遺物 · ${r.rarity}`);
@@ -3635,6 +3737,25 @@
         case '混沌諧星流': return 'bg-pink-500/20 text-pink-300 border-pink-400/50';
         default: return 'bg-slate-700/60 text-slate-200 border-slate-500';
       }
+    }
+
+    function getRarityBadgeStyle(rarity) {
+      if (rarity === '傳說') return 'bg-amber-500/20 text-amber-200 border border-amber-400/60 shadow-[0_0_10px_rgba(245,158,11,0.2)]';
+      if (rarity === '稀有') return 'bg-purple-500/20 text-purple-200 border border-purple-400/55';
+      return 'bg-sky-500/15 text-sky-200 border border-sky-400/45';
+    }
+
+    function getRelicIconSVG(relic, sizeClass = 'w-4 h-4') {
+      const color = relic.rarity === '傳說' ? '#fbbf24' : (relic.rarity === '稀有' ? '#c084fc' : '#38bdf8');
+      const inner = relic.rarity === '傳說'
+        ? '<path d="M12 4 L15 9 L20 10 L16 14 L17 19 L12 16.5 L7 19 L8 14 L4 10 L9 9 Z" fill="currentColor" opacity="0.9"/>'
+        : (relic.rarity === '稀有'
+          ? '<path d="M5 12 Q8 6 12 12 T19 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="2.4" fill="currentColor"/>'
+          : '<path d="M6 13 L10 7 L12 13 L14 9 L18 15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>');
+      return `<svg aria-hidden="true" viewBox="0 0 24 24" class="relic-icon ${sizeClass}" style="color:${color}">
+        <circle cx="12" cy="12" r="9.2" fill="rgba(2,6,23,0.78)" stroke="currentColor" stroke-width="1.4"/>
+        ${inner}
+      </svg>`;
     }
 
     function renderHandUI() {
@@ -3732,7 +3853,7 @@
           el.innerHTML = `
             <div>
               <div class="flex items-center justify-between text-xs mb-1">
-                <span class="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold">${r.icon || '✦'} 聲學遺物 · ${r.rarity}</span>
+                <span class="px-2 py-0.5 rounded font-bold inline-flex items-center gap-1.5 ${getRarityBadgeStyle(r.rarity)}">${getRelicIconSVG(r)} 聲學遺物 · ${r.rarity}</span>
                 <span class="font-mono-code text-slate-400">${r.id}</span>
               </div>
               <h3 class="text-base font-black text-white mt-1">${r.name}</h3>
@@ -3830,11 +3951,16 @@
     const canvasCjkFamilies = getComputedStyle(document.documentElement).getPropertyValue('--font-cjk').trim();
     const compactArena = window.matchMedia('not all and (min-width: 481px)');
 
+    function getCanvasDpr() {
+      return Math.min(2, window.devicePixelRatio || 1);
+    }
+
     function resizeCanvas() {
       const rect = (compactArena.matches ? canvas : canvas.parentElement).getBoundingClientRect();
-      canvas.width = rect.width * window.devicePixelRatio;
-      canvas.height = rect.height * window.devicePixelRatio;
-      ctx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
+      const dpr = getCanvasDpr();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
 
     function getLaneYRatio(lane) {
@@ -3855,6 +3981,8 @@
           size: 2.5 + Math.random() * 4.0
         });
       }
+      const cap = compactArena.matches ? 60 : 160;
+      if (state.particles.length > cap) state.particles.splice(0, state.particles.length - cap);
     }
 
     function spawnFloatingText(xRatio, yRatio, text, color = '#fbbf24') {
@@ -3885,7 +4013,7 @@
     }
 
     function getSpireCache(w, h, tx, ty, primaryHue) {
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = getCanvasDpr();
       const sc = spireCache;
       if (sc.w === w && sc.h === h && sc.dpr === dpr && sc.hue === primaryHue) return sc;
 
@@ -4030,6 +4158,55 @@
 
       // Core Diamond + label (cached static layer)
       ctx.drawImage(sc.top, scX, scY, scW, scH);
+      ctx.restore();
+    }
+
+    function drawTelegraphWarning(e, ex, ey, w, h) {
+      if (!e.telegraphing) return;
+      const wkColor = state.blindMode ? '#f43f5e' : (SHIELD_COLORS[e.weakness] || '#fbbf24');
+      const leadMax = audioClock.TELEGRAPH_LEAD || 1.35;
+      const progress = Math.max(0, Math.min(1, 1 - (e.attackTimer / leadMax)));
+      const towerX = w * 0.14;
+      const corridorEnd = towerX + 30;
+      const corridorStart = ex - (e.isBoss ? 32 : 22);
+      const danger = progress > 0.82 || e.attackTimer <= 0.12;
+
+      ctx.save();
+      // Attack corridor: a restrained dashed lane that flashes red in the last instant.
+      ctx.globalAlpha = 0.20 + progress * 0.42;
+      ctx.strokeStyle = danger ? '#f43f5e' : wkColor;
+      ctx.lineWidth = 1.6 + progress * 2.2;
+      ctx.setLineDash([9, 8]);
+      ctx.beginPath();
+      ctx.moveTo(corridorStart, ey);
+      ctx.lineTo(corridorEnd, ey);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Impact marker at the tower edge.
+      ctx.globalAlpha = 0.35 + progress * 0.45;
+      ctx.fillStyle = danger ? '#f43f5e' : wkColor;
+      ctx.beginPath();
+      ctx.moveTo(corridorEnd, ey - 7 - progress * 3);
+      ctx.lineTo(corridorEnd + 9 + progress * 4, ey);
+      ctx.lineTo(corridorEnd, ey + 7 + progress * 3);
+      ctx.lineTo(corridorEnd - 9 - progress * 4, ey);
+      ctx.closePath();
+      ctx.fill();
+
+      // Countdown ring around the attacker; it fills as the strike becomes imminent.
+      const ringR = (compactArena.matches ? (e.isBoss ? 30 : 22) : (e.isBoss ? 38 : 28)) + progress * 5;
+      ctx.globalAlpha = 0.95;
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.28)';
+      ctx.beginPath();
+      ctx.arc(ex, ey, ringR, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.lineWidth = danger ? 4 : 3;
+      ctx.strokeStyle = danger ? '#f43f5e' : wkColor;
+      ctx.beginPath();
+      ctx.arc(ex, ey, ringR, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+      ctx.stroke();
       ctx.restore();
     }
 
@@ -4218,8 +4395,8 @@
       let labelWidth;
       if (compact) {
         // Fit enemy annotations between the neighboring lane centers.
-        const box = getCompactEnemyLabelBox(e, ex, canvas.width / window.devicePixelRatio);
-        laneY = getLaneYRatio(e.lane) * canvas.height / window.devicePixelRatio;
+        const box = getCompactEnemyLabelBox(e, ex, canvas.width / getCanvasDpr());
+        laneY = getLaneYRatio(e.lane) * canvas.height / getCanvasDpr();
         labelWidth = box.width;
         hpW = Math.min(e.isBoss ? 44 : 34, labelWidth - 4);
         labelX = box.left + labelWidth / 2;
@@ -4356,8 +4533,8 @@
     }
 
     function drawGame(dt) {
-      const w = canvas.width / window.devicePixelRatio;
-      const h = canvas.height / window.devicePixelRatio;
+      const w = canvas.width / getCanvasDpr();
+      const h = canvas.height / getCanvasDpr();
       const nowSec = performance.now() / 1000;
       ctx.clearRect(0, 0, w, h);
 
@@ -4416,31 +4593,38 @@
         audio.analyser.getByteFrequencyData(freqData);
         audio.analyser.getByteTimeDomainData(timeData);
 
-        const barCount = 56;
+        const barCount = compactArena.matches ? 24 : 32;
         const barW = w / barCount;
+        const spectrumMaxH = h * 0.18;
         ctx.fillStyle = state.timbreMode === 'stylized'
-          ? 'rgba(236, 72, 153, 0.16)'
-          : 'rgba(245, 158, 11, 0.14)';
+          ? 'rgba(0, 245, 212, 0.15)'
+          : 'rgba(34, 211, 238, 0.13)';
         for (let i = 0; i < barCount; i++) {
-          const val = freqData[i] || 0;
-          const barH = (val / 255) * (h * 0.34);
-          ctx.fillRect(i * barW, h - barH, barW - 2, barH);
+          const start = Math.floor(Math.pow(i / barCount, 1.6) * (freqData.length - 1));
+          const end = Math.max(start + 1, Math.floor(Math.pow((i + 1) / barCount, 1.6) * (freqData.length - 1)));
+          let sum = 0;
+          for (let j = start; j < end; j++) sum += freqData[j] || 0;
+          const val = sum / (end - start);
+          const barH = (val / 255) * spectrumMaxH;
+          ctx.fillRect(i * barW + 1, h - barH, Math.max(1, barW - 3), barH);
         }
 
-        // Smooth Glowing Oscilloscope Wave across the arena center-back
+        // Time-domain oscilloscope stays near the top edge so it no longer reads as lane noise.
         ctx.save();
         ctx.strokeStyle = state.timbreMode === 'stylized'
-          ? 'rgba(0, 245, 212, 0.25)'
-          : 'rgba(56, 189, 248, 0.22)';
-        ctx.lineWidth = 2;
+          ? 'rgba(0, 245, 212, 0.34)'
+          : 'rgba(56, 189, 248, 0.30)';
+        ctx.lineWidth = 1.8;
         ctx.beginPath();
         const sampleCount = timeData.length;
         const sliceW = w / sampleCount;
+        const waveBaseY = h * 0.12;
+        const waveAmp = Math.min(34, h * 0.10);
         let sumSq = 0;
         for (let i = 0; i < sampleCount; i++) {
           const v = (timeData[i] - 128) / 128;
           sumSq += v * v;
-          const wy = h * 0.52 + v * 75;
+          const wy = waveBaseY + v * waveAmp;
           if (i === 0) ctx.moveTo(0, wy);
           else ctx.lineTo(i * sliceW, wy);
         }
@@ -4484,7 +4668,7 @@
         ctx.stroke();
 
         if (!compactArena.matches) {
-          ctx.fillStyle = isSelected ? '#fde047' : 'rgba(148, 163, 184, 0.50)';
+          ctx.fillStyle = isSelected ? '#fde047' : 'rgba(226, 232, 240, 0.74)';
           ctx.font = `700 10px "JetBrains Mono", ${canvasCjkFamilies}, monospace`;
           ctx.fillText(laneLabels[lane], w * 0.17, y - 30);
         }
@@ -4522,6 +4706,10 @@
 
       // 6. Identify Primary Target & Draw Bespoke Monster Sprites
       const primaryTarget = getPrimaryTargetInLane(state.selectedLane);
+
+      state.enemies.forEach(e => {
+        drawTelegraphWarning(e, w * e.x, h * (getLaneYRatio(e.lane) + (e.yOffset || 0)), w, h);
+      });
 
       state.enemies.forEach(e => {
         const ex = w * e.x;
@@ -4597,50 +4785,62 @@
         const { card, elapsed, peakTime, windowSec } = state.activeCast;
         const cx = w * 0.5;
         const cy = h * 0.5;
-        const targetR = 48;
+        const isCompactCast = compactArena.matches;
+        const overlayR = isCompactCast
+          ? Math.max(42, Math.min(52, h * 0.19, w * 0.14))
+          : Math.max(58, Math.min(122, h * 0.36, w * 0.32));
+        const uiScale = overlayR / 122;
+        const targetR = 48 * uiScale;
         const progress = Math.min(1.15, elapsed / peakTime);
-        const currentR = targetR + Math.max(-14, (1 - progress) * 88);
+        const currentR = targetR + Math.max(-14 * uiScale, (1 - progress) * 88 * uiScale);
         const isInsidePeak = Math.abs(elapsed - peakTime) <= windowSec;
+        const pulse = isInsidePeak ? 1 + Math.sin(nowSec * 16) * 0.055 : 1;
 
         ctx.save();
-        ctx.fillStyle = 'rgba(7, 10, 18, 0.62)';
+        ctx.fillStyle = isCompactCast ? 'rgba(7, 10, 18, 0.28)' : 'rgba(7, 10, 18, 0.58)';
         ctx.beginPath();
-        ctx.arc(cx, cy, 122, 0, Math.PI * 2);
+        ctx.arc(cx, cy, overlayR, 0, Math.PI * 2);
         ctx.fill();
 
         // Outer Degree Ticks
         for (let i = 0; i < 12; i++) {
           const ang = (Math.PI / 6) * i + nowSec * 0.5;
-          ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
+          ctx.strokeStyle = 'rgba(148, 163, 184, 0.32)';
           ctx.lineWidth = 1.5;
           ctx.beginPath();
-          ctx.moveTo(cx + Math.cos(ang) * 96, cy + Math.sin(ang) * 96);
-          ctx.lineTo(cx + Math.cos(ang) * 106, cy + Math.sin(ang) * 106);
+          ctx.moveTo(cx + Math.cos(ang) * overlayR * 0.79, cy + Math.sin(ang) * overlayR * 0.79);
+          ctx.lineTo(cx + Math.cos(ang) * overlayR * 0.87, cy + Math.sin(ang) * overlayR * 0.87);
           ctx.stroke();
         }
 
-        // Target Peak Ring (82% Envelope Peak)
-        ctx.strokeStyle = isInsidePeak ? '#fde047' : 'rgba(255, 255, 255, 0.65)';
-        ctx.lineWidth = isInsidePeak ? 6 : 2.8;
+        // Target Peak Ring (82% Envelope Peak); cyan is reserved for sound/peak feedback.
+        ctx.strokeStyle = isInsidePeak ? '#22d3ee' : 'rgba(255, 255, 255, 0.68)';
+        ctx.lineWidth = isInsidePeak ? Math.max(3.5, 6 * uiScale) : Math.max(1.8, 2.8 * uiScale);
         ctx.beginPath();
-        ctx.arc(cx, cy, targetR, 0, Math.PI * 2);
+        ctx.arc(cx, cy, targetR * pulse, 0, Math.PI * 2);
         ctx.stroke();
 
         // Shrinking Envelope Ring
-        ctx.strokeStyle = isInsidePeak ? '#00f5d4' : '#f59e0b';
-        ctx.lineWidth = 4;
+        ctx.strokeStyle = isInsidePeak ? '#22d3ee' : '#f59e0b';
+        ctx.lineWidth = Math.max(2.2, 4 * uiScale);
         ctx.beginPath();
-        ctx.arc(cx, cy, Math.max(10, currentR), 0, Math.PI * 2);
+        ctx.arc(cx, cy, Math.max(9 * uiScale, currentR), 0, Math.PI * 2);
         ctx.stroke();
 
-        ctx.fillStyle = isInsidePeak ? '#fde047' : '#ffffff';
-        ctx.font = `900 14px ${canvasCjkFamilies}, sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.fillText(isInsidePeak ? '★ PEAK (-1.0 dBFS)! 立即釋放! ★' : `詠唱蓄力: ${card.name}`, cx, cy - 5);
+        if (isCompactCast) {
+          const timing = document.getElementById('releaseCastTiming');
+          const timingText = `${elapsed.toFixed(2)}/${peakTime.toFixed(2)}s`;
+          if (timing && timing.textContent !== timingText) timing.textContent = timingText;
+        } else {
+          ctx.fillStyle = isInsidePeak ? '#67e8f9' : '#ffffff';
+          ctx.font = `900 ${Math.max(10, 14 * uiScale)}px ${canvasCjkFamilies}, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.fillText(isInsidePeak ? 'PEAK！立即釋放' : `詠唱蓄力：${card.name}`, cx, cy - overlayR + Math.max(17, 22 * uiScale), overlayR * 1.65);
 
-        ctx.fillStyle = '#38bdf8';
-        ctx.font = '700 11px "JetBrains Mono", monospace';
-        ctx.fillText(`${elapsed.toFixed(2)}s / Peak ${peakTime.toFixed(2)}s`, cx, cy + 16);
+          ctx.fillStyle = '#7dd3fc';
+          ctx.font = `700 ${Math.max(9, 11 * uiScale)}px "JetBrains Mono", monospace`;
+          ctx.fillText(`${elapsed.toFixed(2)}s / Peak ${peakTime.toFixed(2)}s`, cx, cy + overlayR - Math.max(15, 18 * uiScale));
+        }
         ctx.restore();
       }
 
@@ -4676,8 +4876,9 @@
         ctx.fillStyle = ft.color;
         ctx.font = `900 13px ${canvasCjkFamilies}, sans-serif`;
         ctx.textAlign = 'center';
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
-        ctx.shadowBlur = 6;
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(2, 6, 23, 0.88)';
+        ctx.strokeText(ft.text, ft.x * w, ft.y * h);
         ctx.fillText(ft.text, ft.x * w, ft.y * h);
         ctx.restore();
       }
@@ -4828,22 +5029,33 @@
       });
 
       const shopModal = document.getElementById('shopModal');
-      document.getElementById('btnOpenShop').addEventListener('click', () => {
+      const rewardModalEl = document.getElementById('rewardModal');
+      let shopReturnFocus = null;
+      const openShopModal = (sourceButton) => {
         audio.init();
         renderShopModal();
+        shopReturnFocus = sourceButton || null;
+        if (rewardModalEl && !rewardModalEl.classList.contains('hidden')) {
+          rewardModalEl.toggleAttribute('inert', true);
+        }
         shopModal.classList.remove('hidden');
         shopModal.classList.add('flex');
-      });
-      document.getElementById('btnOpenShopFromReward').addEventListener('click', () => {
-        audio.init();
-        renderShopModal();
-        shopModal.classList.remove('hidden');
-        shopModal.classList.add('flex');
-      });
-      document.getElementById('btnCloseShop').addEventListener('click', () => {
+        requestAnimationFrame(() => document.getElementById('btnCloseShop')?.focus());
+      };
+      const closeShopModal = () => {
         shopModal.classList.add('hidden');
         shopModal.classList.remove('flex');
+        rewardModalEl?.toggleAttribute('inert', false);
+        if (shopReturnFocus && document.contains(shopReturnFocus)) shopReturnFocus.focus();
+        shopReturnFocus = null;
+      };
+      document.getElementById('btnOpenShop').addEventListener('click', (event) => {
+        openShopModal(event.currentTarget);
       });
+      document.getElementById('btnOpenShopFromReward').addEventListener('click', (event) => {
+        openShopModal(event.currentTarget);
+      });
+      document.getElementById('btnCloseShop').addEventListener('click', closeShopModal);
 
       document.getElementById('btnBuyMaxManaShop').addEventListener('click', () => {
         if (state.maxMana >= 5) {
@@ -4968,7 +5180,12 @@
         showToast('沙盒補給：魔力已充能至 5 點並重抽滿手牌！');
       });
 
+      document.getElementById('btnConfirmReward').addEventListener('click', () => {
+        claimSelectedReward();
+      });
+
       document.getElementById('btnSkipReward').addEventListener('click', () => {
+        selectedRewardChoice = null;
         state.gold += 35;
         advanceToNextWave();
       });
@@ -5051,8 +5268,7 @@
           codexModal.classList.remove('flex');
           guideModal.classList.add('hidden');
           guideModal.classList.remove('flex');
-          shopModal.classList.add('hidden');
-          shopModal.classList.remove('flex');
+          if (!shopModal.classList.contains('hidden')) closeShopModal();
           simModal.classList.add('hidden');
           simModal.classList.remove('flex');
         }
