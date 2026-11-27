@@ -4829,7 +4829,7 @@
 
         if (isCompactCast) {
           const timing = document.getElementById('releaseCastTiming');
-          const timingText = `${elapsed.toFixed(1)}/${peakTime.toFixed(1)}s`;
+          const timingText = `${elapsed.toFixed(2)}/${peakTime.toFixed(2)}s`;
           if (timing && timing.textContent !== timingText) timing.textContent = timingText;
         } else {
           ctx.fillStyle = isInsidePeak ? '#67e8f9' : '#ffffff';
