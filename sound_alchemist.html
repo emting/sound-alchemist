@@ -572,7 +572,7 @@
       <!-- Bottom-Right Peak Release Action Button & Next Turn -->
       <div class="ml-auto flex items-center gap-2 z-10 pointer-events-auto max-[481px]:contents">
         <button id="btnReleaseCast" type="button" disabled class="px-4 py-2 rounded-xl text-xs sm:text-sm font-black tracking-wide bg-slate-800/95 text-slate-300 border border-slate-500/80 shadow-xl transition-all">
-          <span class="max-[481px]:hidden">[空白鍵 / 點擊畫面] 峰值釋放 (PEAK RELEASE)</span><span class="min-[481px]:hidden">峰值釋放</span>
+          <span class="max-[481px]:hidden">[空白鍵 / 點擊畫面] 峰值釋放 (PEAK RELEASE)</span><span class="min-[481px]:hidden">峰值釋放</span><span id="releaseCastTiming" class="min-[481px]:hidden ml-1 text-[10px] font-mono-code"></span>
         </button>
         <button id="btnEndTurn" type="button" class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-black bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white border border-indigo-400/60 shadow-xl transition">
           <span class="max-[481px]:hidden">重抽換牌 / 下一波 [R]</span><span class="min-[481px]:hidden">換牌<br>下一波</span>
@@ -2834,6 +2834,8 @@
         badge.textContent = '等待出牌...';
         badge.className = 'text-[11px] font-mono-code px-2.5 py-0.5 rounded-full bg-slate-900 text-slate-300 border border-slate-700';
       }
+      const timing = document.getElementById('releaseCastTiming');
+      if (timing) timing.textContent = '';
     }
 
     function triggerPachinkoBarrage() {
@@ -4783,7 +4785,10 @@
         const { card, elapsed, peakTime, windowSec } = state.activeCast;
         const cx = w * 0.5;
         const cy = h * 0.5;
-        const overlayR = Math.max(58, Math.min(122, h * 0.36, w * 0.32));
+        const isCompactCast = compactArena.matches;
+        const overlayR = isCompactCast
+          ? Math.max(42, Math.min(52, h * 0.19, w * 0.14))
+          : Math.max(58, Math.min(122, h * 0.36, w * 0.32));
         const uiScale = overlayR / 122;
         const targetR = 48 * uiScale;
         const progress = Math.min(1.15, elapsed / peakTime);
@@ -4792,7 +4797,7 @@
         const pulse = isInsidePeak ? 1 + Math.sin(nowSec * 16) * 0.055 : 1;
 
         ctx.save();
-        ctx.fillStyle = 'rgba(7, 10, 18, 0.58)';
+        ctx.fillStyle = isCompactCast ? 'rgba(7, 10, 18, 0.28)' : 'rgba(7, 10, 18, 0.58)';
         ctx.beginPath();
         ctx.arc(cx, cy, overlayR, 0, Math.PI * 2);
         ctx.fill();
@@ -4822,14 +4827,20 @@
         ctx.arc(cx, cy, Math.max(9 * uiScale, currentR), 0, Math.PI * 2);
         ctx.stroke();
 
-        ctx.fillStyle = isInsidePeak ? '#67e8f9' : '#ffffff';
-        ctx.font = `900 ${Math.max(10, 14 * uiScale)}px ${canvasCjkFamilies}, sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.fillText(isInsidePeak ? 'PEAK！立即釋放' : `詠唱蓄力：${card.name}`, cx, cy - overlayR + Math.max(17, 22 * uiScale), overlayR * 1.65);
+        if (isCompactCast) {
+          const timing = document.getElementById('releaseCastTiming');
+          const timingText = `${elapsed.toFixed(1)}/${peakTime.toFixed(1)}s`;
+          if (timing && timing.textContent !== timingText) timing.textContent = timingText;
+        } else {
+          ctx.fillStyle = isInsidePeak ? '#67e8f9' : '#ffffff';
+          ctx.font = `900 ${Math.max(10, 14 * uiScale)}px ${canvasCjkFamilies}, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.fillText(isInsidePeak ? 'PEAK！立即釋放' : `詠唱蓄力：${card.name}`, cx, cy - overlayR + Math.max(17, 22 * uiScale), overlayR * 1.65);
 
-        ctx.fillStyle = '#7dd3fc';
-        ctx.font = `700 ${Math.max(9, 11 * uiScale)}px "JetBrains Mono", monospace`;
-        ctx.fillText(`${elapsed.toFixed(2)}s / Peak ${peakTime.toFixed(2)}s`, cx, cy + overlayR - Math.max(15, 18 * uiScale));
+          ctx.fillStyle = '#7dd3fc';
+          ctx.font = `700 ${Math.max(9, 11 * uiScale)}px "JetBrains Mono", monospace`;
+          ctx.fillText(`${elapsed.toFixed(2)}s / Peak ${peakTime.toFixed(2)}s`, cx, cy + overlayR - Math.max(15, 18 * uiScale));
+        }
         ctx.restore();
       }
 
